@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
-p1xi3 (._.) - Rust-style TUI for Pixel 7 Air-Gapped USB LLM Toolkit
-Features live background hardware polling, dual GrapheneOS / Stock Android modes,
-and smooth box-styled terminal interface.
+p1xi3 (._.) - Responsive Rust-style TUI for Pixel 7 Air-Gapped USB LLM Toolkit
+Features dynamic multi-breakpoint responsive resizing, instant key input response,
+key debouncing, live background hardware polling, and dual GrapheneOS / Stock Android modes.
 """
 
-import curses
 import os
 import sys
+
+# Crucial: Reduce ESC resolution delay from 1000ms down to 25ms
+# This prevents arrow keys and escape sequences from lagging or being misparsed.
+os.environ.setdefault("ESCDELAY", "25")
+
+import curses
+import json
 import time
 import threading
 import subprocess
@@ -57,7 +63,9 @@ def monitor_thread_func():
 
         # 1. Check fastboot
         try:
-            fb_out = subprocess.check_output(["fastboot", "devices"], stderr=subprocess.DEVNULL, timeout=1).decode("utf-8").strip()
+            fb_out = subprocess.check_output(
+                ["fastboot", "devices"], stderr=subprocess.DEVNULL, timeout=1
+            ).decode("utf-8").strip()
             if fb_out:
                 fastboot_on = True
                 adb_st = "Fastboot Mode"
@@ -67,7 +75,9 @@ def monitor_thread_func():
         # 2. Check adb
         if not fastboot_on:
             try:
-                adb_out = subprocess.check_output(["adb", "devices"], stderr=subprocess.DEVNULL, timeout=1.5).decode("utf-8").strip()
+                adb_out = subprocess.check_output(
+                    ["adb", "devices"], stderr=subprocess.DEVNULL, timeout=1.5
+                ).decode("utf-8").strip()
                 lines = [l for l in adb_out.splitlines() if l and not l.startswith("List of")]
                 if lines:
                     line = lines[0]
@@ -77,7 +87,7 @@ def monitor_thread_func():
                         if raw_st == "device":
                             adb_st = "Online"
                         elif raw_st == "unauthorized":
-                            adb_st = "Unauthorized (Prompt on Phone)"
+                            adb_st = "Unauthorized"
                         elif raw_st == "offline":
                             adb_st = "Offline"
                         else:
@@ -88,7 +98,6 @@ def monitor_thread_func():
         # 3. If online, query hardware & radio props
         if adb_st == "Online":
             try:
-                # Batch query to minimize subshell calls
                 cmd = (
                     "echo MODEL:$(getprop ro.product.model);"
                     "echo NAME:$(getprop ro.product.name);"
@@ -100,7 +109,9 @@ def monitor_thread_func():
                     "echo BT:$(settings get global bluetooth_on);"
                     "echo BATT:$(dumpsys battery | grep level | awk '{print $2}');"
                 )
-                output = subprocess.check_output(["adb", "shell", cmd], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8")
+                output = subprocess.check_output(
+                    ["adb", "shell", cmd], stderr=subprocess.DEVNULL, timeout=2
+                ).decode("utf-8")
                 for line in output.splitlines():
                     if line.startswith("MODEL:"):
                         dev_model = line.split(":", 1)[1].strip() or "Pixel 7"
@@ -112,7 +123,7 @@ def monitor_thread_func():
                         sku = line.split(":", 1)[1].strip() or "unknown"
                     elif line.startswith("OEM:"):
                         raw_oem = line.split(":", 1)[1].strip()
-                        oem_unl = "Allowed" if raw_oem == "1" else ("Greyed Out / Locked" if raw_oem == "0" else "Unknown")
+                        oem_unl = "Allowed" if raw_oem == "1" else ("Locked" if raw_oem == "0" else "Unknown")
                     elif line.startswith("AIR:"):
                         raw_air = line.split(":", 1)[1].strip()
                         airp = "ON" if raw_air == "1" else "OFF"
@@ -131,7 +142,9 @@ def monitor_thread_func():
         br_active = False
         active_host_port = 11435
         try:
-            fwd_list = subprocess.check_output(["adb", "forward", "--list"], stderr=subprocess.DEVNULL, timeout=1).decode("utf-8")
+            fwd_list = subprocess.check_output(
+                ["adb", "forward", "--list"], stderr=subprocess.DEVNULL, timeout=1
+            ).decode("utf-8")
             for line in fwd_list.splitlines():
                 parts = line.split()
                 if len(parts) >= 3 and parts[2] == "tcp:11434":
@@ -147,8 +160,10 @@ def monitor_thread_func():
         active_mdl = "None"
         if br_active:
             try:
-                req = urllib.request.Request(f"http://127.0.0.1:{active_host_port}/v1/models", method="GET")
-                with urllib.request.urlopen(req, timeout=0.8) as resp:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{active_host_port}/v1/models", method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=0.6) as resp:
                     raw_data = resp.read().decode("utf-8")
                     if "llamacpp" in raw_data or "models" in raw_data:
                         llm_on = True
@@ -184,36 +199,83 @@ def monitor_thread_func():
                 break
             time.sleep(0.1)
 
-def draw_box(win, y, x, h, w, title=""):
-    """Renders a modern rounded-corner box with optional title."""
+def safe_addstr(win, y, x, text, attr=0):
+    """Safely writes a string clipped to window boundaries, preventing curses.error crashes."""
     try:
-        # Corners and edges: ╭ ╮ ╯ ╰ ─ │
-        win.addstr(y, x, "╭" + "─" * (w - 2) + "╮")
-        for i in range(1, h - 1):
-            win.addstr(y + i, x, "│" + " " * (w - 2) + "│")
-        win.addstr(y + h - 1, x, "╰" + "─" * (w - 2) + "╯")
-        if title:
-            titlestr = f" {title} "
-            win.addstr(y, x + 2, titlestr, curses.A_BOLD)
+        max_y, max_x = win.getmaxyx()
+        if y < 0 or y >= max_y or x < 0 or x >= max_x:
+            return
+        available = max_x - x
+        if available <= 0:
+            return
+        if len(text) >= available:
+            # Leave the rightmost column blank to prevent cursor wrapping exceptions
+            text = text[:available - 1]
+        win.addstr(y, x, text, attr)
     except curses.error:
         pass
 
-def drain_escape_sequence(win):
-    """Absorbs trailing escape sequence characters to prevent phantom key triggers."""
-    win.nodelay(True)
+def draw_box(win, y, x, h, w, title="", color=0):
+    """Renders a rounded-corner box with boundary checking and optional title."""
+    max_y, max_x = win.getmaxyx()
+    if y < 0 or x < 0 or y >= max_y - 1 or x >= max_x - 1:
+        return
+    h = min(h, max_y - y)
+    w = min(w, max_x - x)
+    if h < 2 or w < 2:
+        return
     try:
-        while win.getch() != -1:
-            pass
+        # Top border
+        win.addstr(y, x, "╭" + "─" * (w - 2) + "╮", color)
+        # Side borders
+        for i in range(1, h - 1):
+            win.addstr(y + i, x, "│", color)
+            win.addstr(y + i, x + w - 1, "│", color)
+        # Bottom border
+        if y + h - 1 == max_y - 1 and x + w >= max_x:
+            # Prevent writing to extreme lower-right character
+            win.addstr(y + h - 1, x, "╰" + "─" * (w - 3) + "╯", color)
+        else:
+            win.addstr(y + h - 1, x, "╰" + "─" * (w - 2) + "╯", color)
+
+        if title and w > len(title) + 6:
+            titlestr = f" {title[:w - 8]} "
+            win.addstr(y, x + 2, titlestr, curses.A_BOLD | color)
+    except curses.error:
+        pass
+
+def drain_queued_key(win, key_code):
+    """Consumes identical duplicate keys queued in the input buffer to prevent repeat runaway."""
+    win.nodelay(True)
+    count = 0
+    try:
+        while count < 10:
+            next_ch = win.getch()
+            if next_ch == key_code:
+                count += 1
+                continue
+            elif next_ch != -1:
+                curses.ungetch(next_ch)
+            break
     finally:
-        win.timeout(150)
+        win.timeout(50)
 
 def run_curses_ui(stdscr):
+    # Curses initialization
     curses.curs_set(0)
     curses.noecho()
     curses.cbreak()
     stdscr.keypad(True)
     curses.use_default_colors()
-    stdscr.timeout(150) # Responsive 150ms frame loop without key repeats
+
+    if hasattr(curses, "set_escdelay"):
+        try:
+            curses.set_escdelay(25)
+        except Exception:
+            pass
+
+    # High-responsiveness input loop: 50ms timeout (20 FPS update rate)
+    stdscr.timeout(50)
     curses.flushinp()
 
     # Define color pairs if terminal supports them
@@ -225,95 +287,43 @@ def run_curses_ui(stdscr):
         curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLUE) # Selection highlight
         curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_CYAN) # Tag / Mode pill
     else:
-        # Fallback
         for i in range(1, 7):
             curses.init_pair(i, -1, -1)
 
     selected_idx = 0
+    scroll_offset = 0
+    prev_max_y, prev_max_x = 0, 0
+    last_profile_toggle = 0.0
+    last_action_time = 0.0
+    last_nav_time = 0.0
 
     while True:
         with state["lock"]:
             snap = dict(state)
 
         max_y, max_x = stdscr.getmaxyx()
-        stdscr.erase()
 
-        if max_y < 24 or max_x < 80:
-            msg = f"Terminal too small ({max_x}x{max_y}). Need at least 80x24."
-            try:
-                stdscr.addstr(0, 0, msg, curses.color_pair(3))
-            except curses.error:
-                pass
+        # Terminal resize detection
+        if (max_y, max_x) != (prev_max_y, prev_max_x):
+            prev_max_y, prev_max_x = max_y, max_x
+            stdscr.clear()
+
+        # Handle very small terminals gracefully without crashing or laggy sleep
+        if max_y < 12 or max_x < 40:
+            stdscr.erase()
+            msg1 = "p1xi3 (._.)"
+            msg2 = f"Resize: ({max_x}x{max_y})"
+            msg3 = "Min: 40x12"
+            safe_addstr(stdscr, max(0, max_y // 2 - 1), max(0, (max_x - len(msg1)) // 2), msg1, curses.color_pair(1) | curses.A_BOLD)
+            safe_addstr(stdscr, max_y // 2, max(0, (max_x - len(msg2)) // 2), msg2, curses.color_pair(3))
+            safe_addstr(stdscr, min(max_y - 1, max_y // 2 + 1), max(0, (max_x - len(msg3)) // 2), msg3, curses.A_DIM)
             stdscr.refresh()
-            time.sleep(0.2)
-            # Check exit
             ch = stdscr.getch()
             if ch in [ord('q'), ord('Q'), 27]:
                 break
             continue
 
-        # Header Bar
-        mode_pill = f" [Profile: {snap['target_os']}] "
-        stdscr.addstr(1, 2, "p1xi3", curses.color_pair(1) | curses.A_BOLD)
-        stdscr.addstr(1, 8, "(._.)", curses.A_BOLD)
-        stdscr.addstr(1, 15, ":: Pixel 7 Air-Gapped USB LLM Toolkit", curses.A_DIM)
-        stdscr.addstr(1, max_x - len(mode_pill) - 18, mode_pill, curses.color_pair(6) | curses.A_BOLD)
-        stdscr.addstr(1, max_x - 14, f"[{snap['last_check']}]", curses.A_DIM)
-
-        # ---------------------------------------------------------------------
-        # TOP PANEL: Live Hardware & Security Telemetry Box
-        # ---------------------------------------------------------------------
-        top_h = 7
-        draw_box(stdscr, 3, 2, top_h, max_x - 4, "Live Hardware Telemetry (Auto-updates)")
-
-        # Column 1: Connection & Device
-        st_color = curses.color_pair(2) if snap['adb_status'] == "Online" else (curses.color_pair(3) if "Unauthorized" in snap['adb_status'] else curses.color_pair(4))
-        stdscr.addstr(4, 4, "Status   : ")
-        stdscr.addstr(4, 15, f"{snap['adb_status']}", st_color | curses.A_BOLD)
-
-        stdscr.addstr(5, 4, "Device   : ")
-        stdscr.addstr(5, 15, f"{snap['device_model']} ({snap['device_name']})")
-
-        stdscr.addstr(6, 4, "Carrier  : ")
-        carrier_str = f"{snap['carrier']} / {snap['sku']}"
-        if "vzw" in snap['carrier'].lower() or "verizon" in snap['carrier'].lower():
-            carrier_str += " (Verizon Locked)"
-            stdscr.addstr(6, 15, carrier_str, curses.color_pair(3))
-        else:
-            stdscr.addstr(6, 15, carrier_str)
-
-        # Column 2: Security & Radios
-        col2_x = max(40, max_x // 2 - 4)
-        oem_color = curses.color_pair(2) if snap['oem_unlock'] == "Allowed" else (curses.color_pair(3) if "Greyed Out" in snap['oem_unlock'] else curses.A_NORMAL)
-        stdscr.addstr(4, col2_x, "OEM Unlock : ")
-        stdscr.addstr(4, col2_x + 13, snap['oem_unlock'], oem_color | curses.A_BOLD)
-
-        air_color = curses.color_pair(2) if snap['airplane'] == "ON" else curses.color_pair(3)
-        stdscr.addstr(5, col2_x, "Air-Gap    : ")
-        stdscr.addstr(5, col2_x + 13, f"Airplane: {snap['airplane']} | Wi-Fi: {snap['wifi']} | BT: {snap['bluetooth']}", air_color)
-
-        stdscr.addstr(6, col2_x, "Battery    : ")
-        stdscr.addstr(6, col2_x + 13, f"{snap['battery']}%" if snap['battery'] != "--" else "--")
-
-        # Column 3: USB Bridge & LLM Server
-        col3_x = max(col2_x + 35, (max_x * 3) // 4)
-        br_color = curses.color_pair(2) if snap['bridge_active'] else curses.A_DIM
-        llm_color = curses.color_pair(2) if snap['llm_online'] else curses.A_DIM
-        stdscr.addstr(4, col3_x, "USB Bridge : ")
-        stdscr.addstr(4, col3_x + 13, f"tcp:{snap['host_port']} [OK]" if snap['bridge_active'] else "Inactive", br_color | curses.A_BOLD)
-        stdscr.addstr(5, col3_x, "LLM Server : ")
-        stdscr.addstr(5, col3_x + 13, f"Online ({snap['host_port']})" if snap['llm_online'] else "Offline", llm_color | curses.A_BOLD)
-        stdscr.addstr(6, col3_x, "Model      : ")
-        stdscr.addstr(6, col3_x + 13, f"{snap['active_model'][:20]}" if snap['active_model'] != "None" else "None", curses.color_pair(2) if snap['active_model'] != "None" else curses.A_DIM)
-
-        # ---------------------------------------------------------------------
-        # BOTTOM LEFT: Action Menu List
-        # ---------------------------------------------------------------------
-        bottom_y = 10
-        bottom_h = max_y - bottom_y - 2
-        menu_w = min(42, max_x // 2)
-
-        draw_box(stdscr, bottom_y, 2, bottom_h, menu_w, "Actions")
+        stdscr.erase()
 
         # Dynamic action items based on profile
         if snap['target_os'] == "GrapheneOS":
@@ -343,81 +353,293 @@ def run_curses_ui(stdscr):
             ]
 
         if selected_idx >= len(items):
+            selected_idx = len(items) - 1
+        if selected_idx < 0:
             selected_idx = 0
 
-        for i, (label, _, _) in enumerate(items):
-            item_y = bottom_y + 2 + i
-            if item_y < bottom_y + bottom_h - 1:
-                if i == selected_idx:
-                    stdscr.addstr(item_y, 4, f"> {label:<{menu_w - 8}}", curses.color_pair(5) | curses.A_BOLD)
-                else:
-                    stdscr.addstr(item_y, 4, f"  {label:<{menu_w - 8}}")
+        # Colors & Status Strings
+        st_color = (curses.color_pair(2) if snap['adb_status'] == "Online" 
+                    else (curses.color_pair(3) if "Unauthorized" in snap['adb_status'] 
+                    else curses.color_pair(4)))
+        oem_color = (curses.color_pair(2) if snap['oem_unlock'] == "Allowed" 
+                     else (curses.color_pair(3) if "Locked" in snap['oem_unlock'] 
+                     else curses.A_NORMAL))
+        air_color = curses.color_pair(2) if snap['airplane'] == "ON" else curses.color_pair(3)
+        br_color = curses.color_pair(2) if snap['bridge_active'] else curses.A_DIM
+        llm_color = curses.color_pair(2) if snap['llm_online'] else curses.A_DIM
+
+        # Determine Layout Mode
+        is_wide = (max_x >= 80 and max_y >= 20)
+        is_compact_h = (max_y < 20)
 
         # ---------------------------------------------------------------------
-        # BOTTOM RIGHT: Details & Guidance Box
+        # 1. HEADER BAR
         # ---------------------------------------------------------------------
-        detail_x = menu_w + 3
-        detail_w = max_x - detail_x - 2
-        draw_box(stdscr, bottom_y, detail_x, bottom_h, detail_w, "Step Details & Context")
+        mode_pill = f" [{snap['target_os']}] "
+        safe_addstr(stdscr, 0, 2, "p1xi3", curses.color_pair(1) | curses.A_BOLD)
+        safe_addstr(stdscr, 0, 8, "(._.)", curses.A_BOLD)
+        if max_x >= 65:
+            safe_addstr(stdscr, 0, 15, ":: Pixel 7 Air-Gapped USB LLM", curses.A_DIM)
 
-        curr_label, curr_cmd, curr_desc = items[selected_idx]
-        stdscr.addstr(bottom_y + 2, detail_x + 3, curr_label, curses.color_pair(1) | curses.A_BOLD)
-        stdscr.addstr(bottom_y + 4, detail_x + 3, f"Description: {curr_desc}")
+        pill_x = max(20, max_x - len(mode_pill) - 14)
+        safe_addstr(stdscr, 0, pill_x, mode_pill, curses.color_pair(6) | curses.A_BOLD)
+        if max_x >= 48:
+            safe_addstr(stdscr, 0, max_x - 11, f"[{snap['last_check']}]", curses.A_DIM)
 
-        if "Download" in curr_label or "Switch" in curr_label:
-            stdscr.addstr(bottom_y + 6, detail_x + 3, "Model Roles & Task Suitability:", curses.A_BOLD)
-            stdscr.addstr(bottom_y + 7, detail_x + 3, "• Coding   : [Python/JS] [Refactoring] [Debugging] (Qwen Coder 1.5B/3B)")
-            stdscr.addstr(bottom_y + 8, detail_x + 3, "• Reasoning: [Step-by-Step CoT] [Math] [Logic] (DeepSeek R1 / Qwen 1.5B)")
-            stdscr.addstr(bottom_y + 9, detail_x + 3, "• Chat     : [Fast Answers] [Low Battery] [Writing] (Llama 3.2 / SmolLM2)")
-        elif snap['target_os'] == "Stock Android":
-            stdscr.addstr(bottom_y + 6, detail_x + 3, "Profile Note (Stock Android):", curses.A_BOLD)
-            stdscr.addstr(bottom_y + 7, detail_x + 3, "Ideal when OEM unlocking is permanently disabled by your carrier.")
-            stdscr.addstr(bottom_y + 8, detail_x + 3, "Keeps stock firmware, enforces air-gap, and runs models over USB.")
+        # ---------------------------------------------------------------------
+        # 2. HARDWARE TELEMETRY PANEL
+        # ---------------------------------------------------------------------
+        telemetry_y = 1
+        if is_wide:
+            telemetry_h = 7
+            draw_box(stdscr, telemetry_y, 2, telemetry_h, max_x - 4, "Live Hardware Telemetry")
+
+            # Layout: 3 Columns if width >= 105, 2 Columns if 80 <= width < 105
+            if max_x >= 105:
+                # Column 1
+                safe_addstr(stdscr, telemetry_y + 1, 4, "Status   : ")
+                safe_addstr(stdscr, telemetry_y + 1, 15, snap['adb_status'], st_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 2, 4, "Device   : ")
+                safe_addstr(stdscr, telemetry_y + 2, 15, f"{snap['device_model']} ({snap['device_name']})")
+                safe_addstr(stdscr, telemetry_y + 3, 4, "Carrier  : ")
+                safe_addstr(stdscr, telemetry_y + 3, 15, f"{snap['carrier']} / {snap['sku']}")
+
+                # Column 2
+                col2_x = max(38, max_x // 3 + 2)
+                safe_addstr(stdscr, telemetry_y + 1, col2_x, "OEM Unlock : ")
+                safe_addstr(stdscr, telemetry_y + 1, col2_x + 13, snap['oem_unlock'], oem_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 2, col2_x, "Air-Gap    : ")
+                safe_addstr(stdscr, telemetry_y + 2, col2_x + 13, f"Air:{snap['airplane']} | Wi-Fi:{snap['wifi']} | BT:{snap['bluetooth']}", air_color)
+                safe_addstr(stdscr, telemetry_y + 3, col2_x, "Battery    : ")
+                safe_addstr(stdscr, telemetry_y + 3, col2_x + 13, f"{snap['battery']}%" if snap['battery'] != "--" else "--")
+
+                # Column 3
+                col3_x = max(col2_x + 36, (max_x * 2) // 3)
+                safe_addstr(stdscr, telemetry_y + 1, col3_x, "USB Bridge : ")
+                safe_addstr(stdscr, telemetry_y + 1, col3_x + 13, f"tcp:{snap['host_port']} [OK]" if snap['bridge_active'] else "Inactive", br_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 2, col3_x, "LLM Server : ")
+                safe_addstr(stdscr, telemetry_y + 2, col3_x + 13, f"Online ({snap['host_port']})" if snap['llm_online'] else "Offline", llm_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 3, col3_x, "Model      : ")
+                safe_addstr(stdscr, telemetry_y + 3, col3_x + 13, f"{snap['active_model'][:18]}", curses.color_pair(2) if snap['active_model'] != "None" else curses.A_DIM)
+            else:
+                # 2 Columns
+                half_x = max_x // 2
+                safe_addstr(stdscr, telemetry_y + 1, 4, "Status : ")
+                safe_addstr(stdscr, telemetry_y + 1, 13, snap['adb_status'], st_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 2, 4, "Device : ")
+                safe_addstr(stdscr, telemetry_y + 2, 13, f"{snap['device_model']} ({snap['device_name']})")
+                safe_addstr(stdscr, telemetry_y + 3, 4, "Carrier: ")
+                safe_addstr(stdscr, telemetry_y + 3, 13, f"{snap['carrier']} / {snap['sku']}")
+                safe_addstr(stdscr, telemetry_y + 4, 4, "Battery: ")
+                safe_addstr(stdscr, telemetry_y + 4, 13, f"{snap['battery']}%" if snap['battery'] != "--" else "--")
+
+                safe_addstr(stdscr, telemetry_y + 1, half_x, "OEM Unlock: ")
+                safe_addstr(stdscr, telemetry_y + 1, half_x + 12, snap['oem_unlock'], oem_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 2, half_x, "Air-Gap   : ")
+                safe_addstr(stdscr, telemetry_y + 2, half_x + 12, f"Air:{snap['airplane']} | WF:{snap['wifi']} | BT:{snap['bluetooth']}", air_color)
+                safe_addstr(stdscr, telemetry_y + 3, half_x, "Bridge    : ")
+                safe_addstr(stdscr, telemetry_y + 3, half_x + 12, f"tcp:{snap['host_port']} [OK]" if snap['bridge_active'] else "Off", br_color | curses.A_BOLD)
+                safe_addstr(stdscr, telemetry_y + 4, half_x, "LLM Model : ")
+                safe_addstr(stdscr, telemetry_y + 4, half_x + 12, f"{snap['active_model'][:18]}", curses.color_pair(2) if snap['active_model'] != "None" else curses.A_DIM)
+
+            menu_start_y = telemetry_y + telemetry_h
         else:
-            stdscr.addstr(bottom_y + 6, detail_x + 3, "Profile Note (GrapheneOS):", curses.A_BOLD)
-            stdscr.addstr(bottom_y + 7, detail_x + 3, "Maximum security. Requires OEM unlocking enabled in Developer options.")
-            stdscr.addstr(bottom_y + 8, detail_x + 3, "Replaces OS completely with hardened Android & verified boot.")
+            # Compact Telemetry Box (3 or 4 lines total)
+            telemetry_h = 4
+            draw_box(stdscr, telemetry_y, 2, telemetry_h, max_x - 4, "Telemetry")
+            line1 = f"ADB:{snap['adb_status'][:12]} | Batt:{snap['battery']}% | Bridge:tcp:{snap['host_port']}"
+            line2 = f"OEM:{snap['oem_unlock'][:7]} | Air:{snap['airplane']} | LLM:{'Online' if snap['llm_online'] else 'Offline'}"
+            safe_addstr(stdscr, telemetry_y + 1, 4, line1)
+            safe_addstr(stdscr, telemetry_y + 2, 4, line2)
+            menu_start_y = telemetry_y + telemetry_h
 
-        # Live guidance hints
-        stdscr.addstr(bottom_y + 11, detail_x + 3, "Live Suggestions:", curses.A_BOLD)
-        if snap['adb_status'] == "Disconnected":
-            stdscr.addstr(bottom_y + 12, detail_x + 3, "• Plug your Pixel 7 into this machine with a USB-C data cable.", curses.color_pair(3))
-        elif "Unauthorized" in snap['adb_status']:
-            stdscr.addstr(bottom_y + 12, detail_x + 3, "• Check your phone screen and tap 'Always allow from this computer'.", curses.color_pair(3))
-        elif snap['target_os'] == "GrapheneOS" and snap['oem_unlock'] == "Greyed Out / Locked":
-            stdscr.addstr(bottom_y + 12, detail_x + 3, "• OEM unlocking is greyed out. If carrier-locked, press Tab for Stock Mode.", curses.color_pair(3))
-        elif snap['bridge_active'] and snap['llm_online']:
-            stdscr.addstr(bottom_y + 12, detail_x + 3, "• LLM server is online! Select 'Launch Host Chat Client' to converse.", curses.color_pair(2))
+        # ---------------------------------------------------------------------
+        # 3. ACTIONS MENU & DETAILS (Adaptive Side-by-Side or Stacked)
+        # ---------------------------------------------------------------------
+        footer_h = 2
+        content_h = max(4, max_y - menu_start_y - footer_h)
+
+        if is_wide:
+            # Side-by-Side: Menu (Left) | Details (Right)
+            menu_w = min(42, max(36, max_x // 3 + 6))
+            detail_x = menu_w + 3
+            detail_w = max_x - detail_x - 2
+
+            draw_box(stdscr, menu_start_y, 2, content_h, menu_w, "Actions")
+            draw_box(stdscr, menu_start_y, detail_x, content_h, detail_w, "Step Details & Context")
+
+            # Scroll calculation for menu
+            visible_rows = max(1, content_h - 2)
+            if selected_idx < scroll_offset:
+                scroll_offset = selected_idx
+            elif selected_idx >= scroll_offset + visible_rows:
+                scroll_offset = selected_idx - visible_rows + 1
+
+            # Render scroll indicators
+            if scroll_offset > 0:
+                safe_addstr(stdscr, menu_start_y, menu_w - 2, "▲", curses.color_pair(1))
+            if scroll_offset + visible_rows < len(items):
+                safe_addstr(stdscr, menu_start_y + content_h - 1, menu_w - 2, "▼", curses.color_pair(1))
+
+            for disp_idx, item_i in enumerate(range(scroll_offset, min(len(items), scroll_offset + visible_rows))):
+                label, _, _ = items[item_i]
+                row_y = menu_start_y + 1 + disp_idx
+                prefix = "> " if item_i == selected_idx else "  "
+                attr = curses.color_pair(5) | curses.A_BOLD if item_i == selected_idx else curses.A_NORMAL
+                item_text = f"{prefix}{label}"[:menu_w - 4]
+                safe_addstr(stdscr, row_y, 4, f"{item_text:<{menu_w - 6}}", attr)
+
+            # Details Panel Content
+            curr_label, curr_cmd, curr_desc = items[selected_idx]
+            safe_addstr(stdscr, menu_start_y + 1, detail_x + 3, curr_label, curses.color_pair(1) | curses.A_BOLD)
+            safe_addstr(stdscr, menu_start_y + 3, detail_x + 3, f"Description: {curr_desc[:detail_w - 18]}")
+
+            if "Download" in curr_label or "Switch" in curr_label:
+                safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Curated Models & Workloads:", curses.A_BOLD)
+                safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Coding   : Qwen2.5-Coder 1.5B/3B (Python/JS, Refactoring)")
+                safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Reasoning: DeepSeek-R1 Distill 1.5B (Step-by-step logic, Math)")
+                safe_addstr(stdscr, menu_start_y + 8, detail_x + 3, "• Chat     : Llama-3.2 1B/3B & SmolLM2 (Speed, Low battery)")
+            elif snap['target_os'] == "Stock Android":
+                safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Profile Note (Stock Android):", curses.A_BOLD)
+                safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• For locked bootloaders (e.g. Verizon). Hardens telemetry & radios.")
+                safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Sideloads 16KB-page-size llama-server over ADB without unlocking.")
+            else:
+                safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Profile Note (GrapheneOS):", curses.A_BOLD)
+                safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Maximum hardware security, sandboxing, and verified boot.")
+                safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Requires OEM unlocking enabled in Developer options.")
+
+            # Live Suggestions
+            sugg_y = min(menu_start_y + 10, menu_start_y + content_h - 3)
+            safe_addstr(stdscr, sugg_y, detail_x + 3, "Live Guidance:", curses.A_BOLD)
+            if snap['adb_status'] == "Disconnected":
+                safe_addstr(stdscr, sugg_y + 1, detail_x + 3, "• Plug Pixel into this machine with a USB-C data cable.", curses.color_pair(3))
+            elif "Unauthorized" in snap['adb_status']:
+                safe_addstr(stdscr, sugg_y + 1, detail_x + 3, "• Tap 'Always allow from this computer' on phone screen.", curses.color_pair(3))
+            elif snap['bridge_active'] and snap['llm_online']:
+                safe_addstr(stdscr, sugg_y + 1, detail_x + 3, "• LLM server online! Press Enter on 'Launch Host Chat Client'.", curses.color_pair(2))
+            else:
+                safe_addstr(stdscr, sugg_y + 1, detail_x + 3, "• Press Enter to execute the highlighted step.")
+
         else:
-            stdscr.addstr(bottom_y + 12, detail_x + 3, "• Ready. Press Enter to run the selected step.")
+            # Compact / Stacked: Menu takes full width; preview bar underneath
+            menu_w = max_x - 4
+            menu_h = max(3, content_h - 2)
+            draw_box(stdscr, menu_start_y, 2, menu_h, menu_w, "Actions")
 
-        # Footer Navigation Hints
-        hints = " [↑/↓ or j/k] Navigate  |  [Enter] Execute  |  [Tab/p] Switch Profile  |  [q] Quit "
-        stdscr.addstr(max_y - 1, 3, hints, curses.A_DIM)
+            visible_rows = max(1, menu_h - 2)
+            if selected_idx < scroll_offset:
+                scroll_offset = selected_idx
+            elif selected_idx >= scroll_offset + visible_rows:
+                scroll_offset = selected_idx - visible_rows + 1
+
+            if scroll_offset > 0:
+                safe_addstr(stdscr, menu_start_y, menu_w - 2, "▲", curses.color_pair(1))
+            if scroll_offset + visible_rows < len(items):
+                safe_addstr(stdscr, menu_start_y + menu_h - 1, menu_w - 2, "▼", curses.color_pair(1))
+
+            for disp_idx, item_i in enumerate(range(scroll_offset, min(len(items), scroll_offset + visible_rows))):
+                label, _, _ = items[item_i]
+                row_y = menu_start_y + 1 + disp_idx
+                prefix = "> " if item_i == selected_idx else "  "
+                attr = curses.color_pair(5) | curses.A_BOLD if item_i == selected_idx else curses.A_NORMAL
+                item_text = f"{prefix}{label}"[:menu_w - 4]
+                safe_addstr(stdscr, row_y, 4, f"{item_text:<{menu_w - 6}}", attr)
+
+            # Compact Preview Line
+            curr_label, _, curr_desc = items[selected_idx]
+            preview_y = menu_start_y + menu_h
+            if preview_y < max_y - 1:
+                safe_addstr(stdscr, preview_y, 3, f"▸ {curr_desc}"[:max_x - 6], curses.color_pair(1))
+
+        # ---------------------------------------------------------------------
+        # 4. FOOTER BAR
+        # ---------------------------------------------------------------------
+        footer_y = max_y - 1
+        if max_x >= 70:
+            hints = " [↑/↓ or j/k] Navigate  |  [Enter] Execute  |  [Tab/p] Switch Profile  |  [q] Quit "
+        elif max_x >= 48:
+            hints = " [↑/↓] Move  |  [Enter] Run  |  [Tab] Profile  |  [q] Quit "
+        else:
+            hints = " [↑/↓] Move [Enter] Run [q] Quit "
+        safe_addstr(stdscr, footer_y, 2, hints, curses.A_DIM)
 
         stdscr.refresh()
 
-        # Handle Keyboard Input
+        # ---------------------------------------------------------------------
+        # 5. HIGH RESPONSIVENESS KEYBOARD INPUT & DEBOUNCE
+        # ---------------------------------------------------------------------
         ch = stdscr.getch()
         if ch == -1:
             continue
 
+        now = time.time()
+
+        # Terminal Resize
+        if ch == curses.KEY_RESIZE:
+            try:
+                curses.update_lines_cols()
+            except Exception:
+                pass
+            stdscr.clear()
+            stdscr.refresh()
+            continue
+
+        # Quit
         if ch in [ord('q'), ord('Q')]:
             break
-        elif ch in [curses.KEY_UP, ord('k')]:
+
+        # Standalone ESC key handling (without eating arrow escape sequences)
+        if ch == 27:
+            stdscr.nodelay(True)
+            next_ch = stdscr.getch()
+            stdscr.timeout(50)
+            if next_ch == -1:
+                # Standalone ESC pressed
+                break
+            else:
+                # Consume any remaining escape sequence bytes cleanly
+                stdscr.nodelay(True)
+                while stdscr.getch() != -1:
+                    pass
+                stdscr.timeout(50)
+                continue
+
+        # Navigation: Up
+        elif ch in [curses.KEY_UP, ord('k'), ord('K')]:
+            drain_queued_key(stdscr, ch)
             selected_idx = (selected_idx - 1) % len(items)
-        elif ch in [curses.KEY_DOWN, ord('j')]:
+
+        # Navigation: Down
+        elif ch in [curses.KEY_DOWN, ord('j'), ord('J')]:
+            drain_queued_key(stdscr, ch)
             selected_idx = (selected_idx + 1) % len(items)
-        elif ch in [ord('\t'), ord('p')]:
-            # Toggle profile with Tab or 'p' (Profile)
-            with state["lock"]:
-                state["target_os"] = "Stock Android" if state["target_os"] == "GrapheneOS" else "GrapheneOS"
+
+        # Navigation: Page Up / Home
+        elif ch in [curses.KEY_PPAGE, curses.KEY_HOME, ord('g')]:
             selected_idx = 0
-        elif ch == 27:
-            # Drain escape sequences (e.g. mouse tracking, function keys)
-            drain_escape_sequence(stdscr)
+
+        # Navigation: Page Down / End
+        elif ch in [curses.KEY_NPAGE, curses.KEY_END, ord('G')]:
+            selected_idx = len(items) - 1
+
+        # Profile Switch (Debounced 200ms)
+        elif ch in [ord('\t'), ord('p'), ord('P')]:
+            if now - last_profile_toggle > 0.2:
+                last_profile_toggle = now
+                with state["lock"]:
+                    state["target_os"] = "Stock Android" if state["target_os"] == "GrapheneOS" else "GrapheneOS"
+                selected_idx = 0
+                scroll_offset = 0
+
+        # Action Execution (Debounced 250ms)
         elif ch in [10, 13, curses.KEY_ENTER]:
-            # Execute selected action
+            if now - last_action_time < 0.25:
+                continue
+            last_action_time = now
+
+            # Flush input buffer before executing so no stray keystrokes carry over
+            curses.flushinp()
+
             _, target_cmd, _ = items[selected_idx]
             if target_cmd == "EXIT":
                 break
@@ -425,8 +647,9 @@ def run_curses_ui(stdscr):
                 with state["lock"]:
                     state["target_os"] = "Stock Android" if state["target_os"] == "GrapheneOS" else "GrapheneOS"
                 selected_idx = 0
+                scroll_offset = 0
             else:
-                # Suspend curses cleanly using standard def_prog_mode
+                # Suspend curses cleanly
                 curses.def_prog_mode()
                 curses.endwin()
                 print("\n" * 2)
@@ -446,17 +669,17 @@ def run_curses_ui(stdscr):
                 except (KeyboardInterrupt, EOFError):
                     pass
 
-                # Restore curses state cleanly without throwing endwin error
+                # Restore curses state cleanly
                 curses.reset_prog_mode()
                 curses.curs_set(0)
                 stdscr.keypad(True)
-                stdscr.timeout(150)
+                stdscr.timeout(50)
                 curses.flushinp()
                 stdscr.clear()
                 stdscr.refresh()
 
 def main():
-    # Start monitor thread
+    # Start background telemetry thread
     t = threading.Thread(target=monitor_thread_func, daemon=True)
     t.start()
     try:
@@ -465,7 +688,7 @@ def main():
         pass
     finally:
         stop_monitor.set()
-        t.join(timeout=1.0)
+        t.join(timeout=0.8)
         try:
             curses.endwin()
         except Exception:
