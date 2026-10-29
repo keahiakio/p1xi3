@@ -1,0 +1,6 @@
+# p1xi3 gitignore
+__pycache__/
+*.pyc
+bin/*.apk
+models/*.gguf
+.DS_Store
