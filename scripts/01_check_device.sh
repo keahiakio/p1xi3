@@ -48,27 +48,35 @@ if [ "$ADB_COUNT" -gt 0 ]; then
 
     DEVICE_MODEL=$(adb shell getprop ro.product.model 2>/dev/null || echo "Unknown")
     DEVICE_NAME=$(adb shell getprop ro.product.name 2>/dev/null || echo "Unknown")
+    CARRIER=$(adb shell getprop ro.carrier 2>/dev/null || echo "Unknown")
+    SKU=$(adb shell getprop ro.boot.hardware.sku 2>/dev/null || echo "Unknown")
     BATTERY_LEVEL=$(adb shell dumpsys battery 2>/dev/null | grep level | awk '{print $2}' || echo "Unknown")
 
-    echo -e "\n${GREEN}Device Detected via ADB:${NC}"
+    echo -e "\n${GREEN}(^_^) [ok] Device Detected via ADB:${NC}"
     echo "  Model:       $DEVICE_MODEL ($DEVICE_NAME)"
+    echo "  Carrier SKU: $CARRIER / $SKU"
     echo "  Battery:     $BATTERY_LEVEL%"
 
     # Pixel 7 codename is panther
     if [[ "$DEVICE_NAME" != *"panther"* ]]; then
-        echo -e "${YELLOW}[Notice] Expected Pixel 7 ('panther'). Detected: '$DEVICE_NAME'.${NC}"
+        echo -e "${YELLOW}(o.o) [Notice] Expected Pixel 7 ('panther'). Detected: '$DEVICE_NAME'.${NC}"
     else
-        echo -e "${GREEN}Verified target device: Pixel 7 (panther)${NC}"
+        echo -e "${GREEN}(^_^) [ok] Verified target device: Pixel 7 (panther)${NC}"
     fi
 
     # Check OEM unlock status
     echo -n "Checking OEM unlockable status... "
     OEM_UNLOCKABLE=$(adb shell getprop sys.oem_unlock_allowed 2>/dev/null || echo "0")
     if [ "$OEM_UNLOCKABLE" == "1" ]; then
-        echo -e "${GREEN}Allowed (OEM unlocking enabled in Developer Options)${NC}"
+        echo -e "${GREEN}(^_^) [ok] Allowed (OEM unlocking enabled in Developer Options)${NC}"
     else
-        echo -e "${YELLOW}Unknown or Disabled ($OEM_UNLOCKABLE)${NC}"
-        echo "Please verify in Settings > System > Developer options > OEM unlocking is toggled ON."
+        echo -e "${YELLOW}(o.o) [!] Greyed Out or Disabled ($OEM_UNLOCKABLE)${NC}"
+        if [[ "$CARRIER" =~ (vzw|verizon) ]]; then
+            echo -e "  ${YELLOW}Notice:${NC} This appears to be a Verizon model ($CARRIER). The bootloader is permanently locked by Verizon hardware policy."
+            echo -e "  ${GREEN}Recommendation:${NC} Use p1xi3's 'Stock Android' profile (press Tab in TUI) to run local LLMs on stock firmware."
+        else
+            echo -e "  Tip: If this is an unlocked Pixel, connect to Wi-Fi for 5-10 minutes to allow Google activation check-in."
+        fi
     fi
 fi
 

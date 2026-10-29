@@ -28,19 +28,34 @@
 
 ## Quick Start
 
-Launch the interactive wizard:
+Launch the interactive Rust-style TUI:
 ```bash
 cd /home/keahiakio/p1xi3
 python3 wizard.py
 ```
+*(Or run `python3 tui.py` directly. For headless/dumb terminal environments, pass `python3 wizard.py --cli`).*
 
-Or execute individual steps directly:
+### TUI Features & Controls
+- **Live Hardware Telemetry**: Continuously polls ADB, Fastboot, device model, battery %, carrier SKU, OEM unlock state, radio status (Airplane/Wi-Fi/BT), and USB bridge health in the background. No need to restart or re-enter!
+- **Dual Operating Profiles (`Tab` to toggle)**:
+  - **GrapheneOS Profile**: Complete wipe, bootloader unlocking, WebUSB/fastboot flashing, hardware verified boot.
+  - **Stock Android Profile**: For devices with permanently carrier-locked bootloaders (e.g., Verizon). Hardens stock Android, disables background telemetry/radios via ADB, and provisions local LLMs without unlocking the bootloader.
+- **Controls**:
+  - `↑` / `↓` or `j` / `k` : Navigate actions
+  - `Enter` : Execute highlighted action
+  - `Tab` or `m` : Toggle between **GrapheneOS** and **Stock Android** profiles
+  - `q` : Exit
+
+---
+
+## Script Index
 
 | Step | Script | Description |
 |---|---|---|
-| **1. Check Device** | `./scripts/01_check_device.sh` | Verifies ADB/Fastboot connectivity, battery level, and OEM unlock permission. |
+| **1. Check Device** | `./scripts/01_check_device.sh` | Verifies ADB/Fastboot connectivity, battery level, carrier SKU, and OEM unlock permission. |
 | **2. Flash GrapheneOS** | `./scripts/02_flash_guide.sh` | Guided walkthrough for WebUSB installer or CLI fastboot flashing. |
-| **3. Air-Gap Hardening** | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
+| **3. Graphene Air-Gap** | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
+| **3. Stock Hardening** | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |
 | **4. Provision Device** | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
 | **5. Push Model** | `./scripts/05_push_model.sh` | Downloads 1B/3B GGUF models and transfers them to the device via USB. |
 | **6. USB Bridge** | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11434 tcp:11434` and tests connection. |

@@ -64,4 +64,12 @@ def menu():
         print("\n" * 2)
 
 if __name__ == "__main__":
-    menu()
+    if "--cli" in sys.argv:
+        menu()
+    else:
+        try:
+            import tui
+            tui.main()
+        except Exception as e:
+            print(f"(o.o) [!] Could not initialize curses TUI ({e}). Falling back to CLI mode...")
+            menu()
