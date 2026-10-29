@@ -20,7 +20,7 @@ def run_script(script_name):
 
 def print_header():
     print("\033[1;36m" + "=" * 65)
-    print("      p1xi3: Pixel 7 Air-Gapped USB LLM Toolkit")
+    print("      p1xi3 (._.) : Pixel 7 Air-Gapped USB LLM Toolkit")
     print("=" * 65 + "\033[0m\n")
 
 def menu():

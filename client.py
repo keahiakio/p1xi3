@@ -92,17 +92,17 @@ def stream_chat(prompt: str, history: list):
     history.append({"role": "assistant", "content": full_response})
 
 def main():
-    print("\033[1;34m=== p1xi3: Pixel 7 Air-Gapped USB LLM Client ===\033[0m")
+    print("\033[1;34m=== p1xi3 (o.o) : Pixel 7 Air-Gapped USB LLM Client ===\033[0m")
     print(f"Connecting to p1xi3 over USB at \033[1;32m{ENDPOINT}\033[0m ...\n")
 
     if not check_connection():
-        print("\033[1;31m[!] Could not connect to LLM server on localhost:11434.\033[0m")
+        print("\033[1;31m(-_-) [!] Could not connect to LLM server on localhost:11434.\033[0m")
         print("Please verify:")
         print("  1. 'adb forward tcp:11434 tcp:11434' is active (run ./scripts/06_start_bridge.sh)")
         print("  2. 'llama-server' or 'ollama' is actively listening inside Termux on the phone.")
         sys.exit(1)
 
-    print("\033[1;32m[✔] Connected to Pixel 7! Type your prompt or 'exit' / 'quit' to end.\033[0m\n")
+    print("\033[1;32m(^_^) [ok] Connected to Pixel 7! Type your prompt or 'exit' / 'quit' to end.\033[0m\n")
 
     history = []
     while True:

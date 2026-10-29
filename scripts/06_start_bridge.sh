@@ -26,9 +26,9 @@ adb forward --list
 
 echo -e "\n${YELLOW}Testing endpoint at http://127.0.0.1:$PORT ...${NC}"
 if curl -s -m 2 "http://127.0.0.1:$PORT/health" &>/dev/null || curl -s -m 2 "http://127.0.0.1:$PORT/v1/models" &>/dev/null || curl -s -m 2 "http://127.0.0.1:$PORT/api/tags" &>/dev/null; then
-    echo -e "${GREEN}[✔] Success! LLM server on Pixel 7 responded over USB.${NC}"
+    echo -e "${GREEN}(^_^) [ok] Success! LLM server on Pixel 7 responded over USB.${NC}"
 else
-    echo -e "${YELLOW}[!] LLM server is not responding yet.${NC}"
+    echo -e "${YELLOW}(o.o) [!] LLM server is not responding yet.${NC}"
     echo "Make sure the server is running on the phone. Inside Termux, run:"
     echo "  cd ~/llama.cpp"
     echo "  ./build/bin/llama-server -m /sdcard/Download/models/<model_name>.gguf --host 127.0.0.1 --port $PORT -c 2048 -t 4"

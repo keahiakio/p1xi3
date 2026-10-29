@@ -1,6 +1,6 @@
-# p1xi3 🪄
+# p1xi3 (._.)
 
-> **p1xi3**: Turn your Google Pixel 7 (`panther`) into a dedicated, hardened, air-gapped LLM inference coprocessor running GrapheneOS and streaming responses back over a physical USB-C cable.
+> **p1xi3** : Turn your Google Pixel 7 (`panther`) into a dedicated, hardened, air-gapped LLM inference coprocessor running GrapheneOS and streaming responses back over a physical USB-C cable.
 
 ---
 
