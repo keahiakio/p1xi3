@@ -120,4 +120,12 @@ python3 wizard.py
    ./scripts/06_start_bridge.sh
    python3 client.py
    ```
-2. Any request to `http://localhost:11434` passes over ADB USB to the phone's native server without touching any wireless or external network.
+2. Any request to `http://localhost:11435` passes over ADB USB to the phone's native server without touching any wireless or external network.
+
+---
+
+## License & Compliance
+
+- **Project License**: Licensed under the [MIT License](LICENSE).
+- **Compliance & Attribution**: Full licensing terms for upstream components (`llama.cpp`, `Termux`, `GrapheneOS`) and model weights (`Llama 3.2`, `Qwen 2.5`, `DeepSeek`, `SmolLM2`) are detailed in [COMPLIANCE.md](COMPLIANCE.md).
+
