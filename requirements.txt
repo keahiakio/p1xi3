@@ -1,0 +1,14 @@
+# p1xi3 host requirements
+# -------------------------------------------------------------
+# Core host tools (wizard.py, tui.py, client.py) are intentionally 
+# designed using the Python standard library (curses, urllib, json, 
+# subprocess, threading) to ensure zero third-party pip dependencies.
+#
+# Requirements:
+# - Python >= 3.8
+# - Python curses support (included in standard Python on Linux/macOS)
+# -------------------------------------------------------------
+
+# Optional development & code quality tools:
+# ruff>=0.1.0
+# mypy>=1.0.0

@@ -34,6 +34,83 @@
 
 ---
 
+## System Requirements & Prerequisites
+
+### 1. Host Requirements
+- **Operating System**: Linux (Ubuntu/Debian, Arch, Fedora, openSUSE) or macOS.
+- **Python**: Python 3.8+ (The host client and TUI use **pure standard library** modules—`curses`, `urllib`, `subprocess`, `json`—with **zero mandatory pip packages**).
+- **Host Binaries**:
+  - `adb` & `fastboot` (Android SDK platform-tools)
+  - `curl` & `tar`
+  - Linux: Android USB `udev` rules for non-root device access.
+
+### 2. Device Requirements
+- **Target Device**: Google Pixel 7 (`panther`) or Tensor-series Pixel device (8 GB RAM recommended).
+- **Connection**: High-speed USB-C to USB-C / USB-A data cable connected directly to the host machine.
+
+---
+
+## Installation & Setup
+
+### Automated Installation (Recommended)
+
+Run the included installer to automatically detect your operating system, install missing package dependencies (`adb`, `fastboot`, `curl`, `tar`, `python3`), configure USB udev permissions, and set file permissions:
+
+```bash
+git clone https://github.com/keahiakio/p1xi3.git
+cd p1xi3
+chmod +x install.sh
+./install.sh
+```
+
+### Manual Installation by Platform
+
+If you prefer to configure your environment manually:
+
+<details>
+<summary><b>Debian / Ubuntu / Pop!_OS / Linux Mint</b></summary>
+
+```bash
+sudo apt-get update
+sudo apt-get install -y android-tools-adb android-tools-fastboot curl tar python3 python3-curses
+```
+</details>
+
+<details>
+<summary><b>Arch Linux / Manjaro / CachyOS / EndeavourOS</b></summary>
+
+```bash
+sudo pacman -Syu --needed android-tools android-udev curl tar python
+```
+</details>
+
+<details>
+<summary><b>Fedora / RHEL / CentOS / Rocky Linux</b></summary>
+
+```bash
+sudo dnf install -y android-tools curl tar python3
+```
+</details>
+
+<details>
+<summary><b>macOS (Homebrew)</b></summary>
+
+```bash
+brew install --cask android-platform-tools
+brew install curl python3
+```
+</details>
+
+### Python Dependencies
+
+No third-party packages are required to run the TUI, setup wizard, or chat client:
+```bash
+# Optional: verify your python environment meets the zero-dependency spec
+pip install -r requirements.txt
+```
+
+---
+
 ## Quick Start
 
 Launch the interactive Rust-style TUI:
