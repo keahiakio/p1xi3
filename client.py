@@ -17,8 +17,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PORT_FILE = os.path.join(SCRIPT_DIR, ".port")
 
 def discover_port():
-    """Detects active forward port from adb forward --list or .port file."""
-    # 1. Try checking adb forward --list
+    """Detects active forward port from adb forward --list or ensures one is active."""
     try:
         fwd_out = subprocess.check_output(["adb", "forward", "--list"], stderr=subprocess.DEVNULL).decode("utf-8")
         for line in fwd_out.splitlines():
@@ -31,26 +30,22 @@ def discover_port():
     except Exception:
         pass
 
-    # 2. Try .port file
+    # Read .port file if available
+    port = 11435
     if os.path.exists(PORT_FILE):
         try:
             with open(PORT_FILE, "r") as f:
-                return int(f.read().strip())
+                port = int(f.read().strip())
         except Exception:
-            pass
+            port = 11435
 
-    # 3. Defaults: check 11435 then 11434
-    for p in [11435, 11434]:
-        try:
-            req = urllib.request.Request(f"http://127.0.0.1:{p}/v1/models", method="GET")
-            with urllib.request.urlopen(req, timeout=1) as resp:
-                data = resp.read().decode("utf-8")
-                if "llamacpp" in data or "panther" in data or "models" in data:
-                    return p
-        except Exception:
-            continue
+    # Auto-ensure ADB forward is active
+    try:
+        subprocess.call(["adb", "forward", f"tcp:{port}", "tcp:11434"], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
-    return 11435
+    return port
 
 PORT = discover_port()
 ENDPOINT = f"http://127.0.0.1:{PORT}"
@@ -113,6 +108,26 @@ def stream_chat(prompt: str, history: list, model_id: str):
     print(f"\n\n\033[90m[{token_count} tokens in {dt:.2f}s | {tps:.2f} t/s]\033[0m\n")
     history.append({"role": "assistant", "content": full_response})
 
+def get_model_tags(name: str) -> str:
+    lower = name.lower()
+    if "coder-1.5b" in lower:
+        return "[Coding] [Python/JS/Bash] [Fast Scripting]"
+    elif "coder-3b" in lower:
+        return "[Coding] [Architecture] [Refactoring] [Debugging]"
+    elif "r1" in lower or "deepseek" in lower:
+        return "[Deep Reasoning] [Math] [Step-by-Step CoT]"
+    elif "qwen2.5-1.5b" in lower:
+        return "[General Reasoning] [Math] [Instruction Following]"
+    elif "llama-3.2-1b" in lower:
+        return "[Fast Chat] [Low Battery] [Quick Answers]"
+    elif "llama-3.2-3b" in lower:
+        return "[General Assistant] [Writing] [Broad Knowledge]"
+    elif "smollm2-1.7b" in lower:
+        return "[Lightweight Chat] [Dialogue] [Efficient]"
+    elif "smollm2-360m" in lower:
+        return "[Ultra-Fast] [Low Memory] [Instant Responses]"
+    return "[General Purpose / Custom Model]"
+
 def main():
     global PORT, ENDPOINT
     PORT = discover_port()
@@ -131,8 +146,10 @@ def main():
         sys.exit(1)
 
     clean_model_name = os.path.basename(model_id)
+    tags = get_model_tags(clean_model_name)
     print(f"\033[1;32m(^_^) [ok] Connected to Pixel 7!\033[0m")
     print(f"Loaded Model : \033[1;33m{clean_model_name}\033[0m")
+    print(f"Optimal For  : \033[1;36m{tags}\033[0m")
     print("Type your message or 'exit' / 'quit' to finish.\n")
 
     history = []

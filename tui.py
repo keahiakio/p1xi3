@@ -364,7 +364,12 @@ def run_curses_ui(stdscr):
         stdscr.addstr(bottom_y + 2, detail_x + 3, curr_label, curses.color_pair(1) | curses.A_BOLD)
         stdscr.addstr(bottom_y + 4, detail_x + 3, f"Description: {curr_desc}")
 
-        if snap['target_os'] == "Stock Android":
+        if "Download" in curr_label or "Switch" in curr_label:
+            stdscr.addstr(bottom_y + 6, detail_x + 3, "Model Roles & Task Suitability:", curses.A_BOLD)
+            stdscr.addstr(bottom_y + 7, detail_x + 3, "• Coding   : [Python/JS] [Refactoring] [Debugging] (Qwen Coder 1.5B/3B)")
+            stdscr.addstr(bottom_y + 8, detail_x + 3, "• Reasoning: [Step-by-Step CoT] [Math] [Logic] (DeepSeek R1 / Qwen 1.5B)")
+            stdscr.addstr(bottom_y + 9, detail_x + 3, "• Chat     : [Fast Answers] [Low Battery] [Writing] (Llama 3.2 / SmolLM2)")
+        elif snap['target_os'] == "Stock Android":
             stdscr.addstr(bottom_y + 6, detail_x + 3, "Profile Note (Stock Android):", curses.A_BOLD)
             stdscr.addstr(bottom_y + 7, detail_x + 3, "Ideal when OEM unlocking is permanently disabled by your carrier.")
             stdscr.addstr(bottom_y + 8, detail_x + 3, "Keeps stock firmware, enforces air-gap, and runs models over USB.")
