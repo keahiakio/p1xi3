@@ -65,7 +65,7 @@ python3 wizard.py
 | **3. Graphene Air-Gap** | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
 | **3. Stock Hardening** | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |
 | **4. Provision Device** | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
-| **5. Push Model** | `./scripts/05_push_model.sh` | Downloads optimal coding, reasoning, or chat GGUF models and transfers them via USB. |
+| **5. Push Model** | `./scripts/05_push_model.sh` | Downloads individual models or the complete ~10.5 GB suite (Option 'A') and streams to device. |
 | **6. Switch Model** | `./scripts/07_switch_model.sh` | Interactive switcher to hot-swap active models in memory on the device. |
 | **7. USB Bridge** | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11435 tcp:11434` with auto-collision prevention. |
 | **8. Chat Client** | `python3 client.py` | Host CLI interface streaming responses with tokens/sec metrics. |
