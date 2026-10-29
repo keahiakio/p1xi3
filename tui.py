@@ -30,6 +30,7 @@ state = {
     "wifi": "--",
     "bluetooth": "--",
     "bridge_active": False,
+    "host_port": 11435,
     "llm_online": False,
     "last_check": "",
     "fastboot_active": False,
@@ -125,23 +126,30 @@ def monitor_thread_func():
             except Exception:
                 pass
 
-        # 4. Check bridge
+        # 4. Check bridge & determine host port
         br_active = False
+        active_host_port = 11435
         try:
             fwd_list = subprocess.check_output(["adb", "forward", "--list"], stderr=subprocess.DEVNULL, timeout=1).decode("utf-8")
-            if "11434" in fwd_list:
-                br_active = True
+            for line in fwd_list.splitlines():
+                parts = line.split()
+                if len(parts) >= 3 and parts[2] == "tcp:11434":
+                    br_active = True
+                    host_part = parts[1]
+                    if host_part.startswith("tcp:"):
+                        active_host_port = int(host_part[4:])
         except Exception:
             pass
 
-        # 5. Check LLM Server
+        # 5. Check LLM Server on discovered port
         llm_on = False
         if br_active:
-            for endpoint in ["http://127.0.0.1:11434/health", "http://127.0.0.1:11434/v1/models"]:
+            for endpoint in [f"http://127.0.0.1:{active_host_port}/v1/models", f"http://127.0.0.1:{active_host_port}/health"]:
                 try:
                     req = urllib.request.Request(endpoint, method="GET")
                     with urllib.request.urlopen(req, timeout=0.8) as resp:
-                        if resp.status == 200:
+                        data = resp.read().decode("utf-8")
+                        if "llamacpp" in data or "panther" in data or "models" in data:
                             llm_on = True
                             break
                 except Exception:
@@ -161,6 +169,7 @@ def monitor_thread_func():
             state["wifi"] = wf
             state["bluetooth"] = bt
             state["bridge_active"] = br_active
+            state["host_port"] = active_host_port
             state["llm_online"] = llm_on
             state["last_check"] = time.strftime("%H:%M:%S")
 
@@ -273,9 +282,9 @@ def run_curses_ui(stdscr):
         br_color = curses.color_pair(2) if snap['bridge_active'] else curses.A_DIM
         llm_color = curses.color_pair(2) if snap['llm_online'] else curses.A_DIM
         stdscr.addstr(4, col3_x, "USB Bridge : ")
-        stdscr.addstr(4, col3_x + 13, "tcp:11434 [OK]" if snap['bridge_active'] else "Inactive", br_color | curses.A_BOLD)
+        stdscr.addstr(4, col3_x + 13, f"tcp:{snap['host_port']} [OK]" if snap['bridge_active'] else "Inactive", br_color | curses.A_BOLD)
         stdscr.addstr(5, col3_x, "LLM Server : ")
-        stdscr.addstr(5, col3_x + 13, "Online (11434)" if snap['llm_online'] else "Offline", llm_color | curses.A_BOLD)
+        stdscr.addstr(5, col3_x + 13, f"Online ({snap['host_port']})" if snap['llm_online'] else "Offline", llm_color | curses.A_BOLD)
 
         # ---------------------------------------------------------------------
         # BOTTOM LEFT: Action Menu List
