@@ -72,16 +72,18 @@ fi
 
 # Push to phone via USB
 if ! adb get-state &>/dev/null; then
-    echo -e "\n${RED}[!] No ADB device connected.${NC}"
+    echo -e "\n${RED}(- -) [!] No ADB device connected.${NC}"
     echo "Model saved to $LOCAL_MODEL_PATH. Connect device and run again to push."
     exit 1
 fi
 
-echo -e "\n${YELLOW}Creating target directory on device (/sdcard/Download/models)...${NC}"
-adb shell mkdir -p /sdcard/Download/models
+echo -e "\n${YELLOW}Streaming $MODEL_FILE over USB directly into Termux (~/models/)...${NC}"
+adb shell "run-as com.termux /data/data/com.termux/files/usr/bin/bash -c 'mkdir -p /data/data/com.termux/files/home/models'"
 
-echo -e "${YELLOW}Pushing $MODEL_FILE over USB to Pixel 7...${NC}"
-adb push "$LOCAL_MODEL_PATH" "/sdcard/Download/models/$MODEL_FILE"
+tar -cz -C "$MODELS_DIR" "$MODEL_FILE" | adb shell "run-as com.termux /data/data/com.termux/files/usr/bin/tar -xz -C /data/data/com.termux/files/home/models"
 
-echo -e "\n${GREEN}Model deployed successfully to:${NC}"
-echo "  /sdcard/Download/models/$MODEL_FILE"
+echo -e "\n${GREEN}(^_^) [ok] Model deployed successfully to:${NC}"
+echo "  ~/models/$MODEL_FILE inside Termux."
+echo ""
+echo "To start the LLM server on the phone, simply open Termux and run:"
+echo "  bash ~/start_server.sh"

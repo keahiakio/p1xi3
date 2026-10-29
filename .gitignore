@@ -1,6 +1,9 @@
 # p1xi3 gitignore
 __pycache__/
 *.pyc
-bin/*.apk
-models/*.gguf
+bin/
+models/
+*.tar.gz
+*.apk
+*.gguf
 .DS_Store

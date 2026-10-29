@@ -30,8 +30,7 @@ if curl -s -m 2 "http://127.0.0.1:$PORT/health" &>/dev/null || curl -s -m 2 "htt
 else
     echo -e "${YELLOW}(o.o) [!] LLM server is not responding yet.${NC}"
     echo "Make sure the server is running on the phone. Inside Termux, run:"
-    echo "  cd ~/llama.cpp"
-    echo "  ./build/bin/llama-server -m /sdcard/Download/models/<model_name>.gguf --host 127.0.0.1 --port $PORT -c 2048 -t 4"
+    echo "  bash ~/start_server.sh"
 fi
 
 echo -e "\nTo test chatting with the model from your host computer, run:"
