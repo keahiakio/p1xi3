@@ -67,12 +67,11 @@ def menu():
         print("\n" * 2)
 
 if __name__ == "__main__":
-    if "--cli" in sys.argv:
+    if "--cli" in sys.argv or not sys.stdout.isatty():
         menu()
     else:
+        import tui
         try:
-            import tui
             tui.main()
-        except Exception as e:
-            print(f"(o.o) [!] Could not initialize curses TUI ({e}). Falling back to CLI mode...")
-            menu()
+        except KeyboardInterrupt:
+            print("\np1xi3 (._.) session closed.\n")

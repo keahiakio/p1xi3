@@ -421,24 +421,34 @@ def run_curses_ui(stdscr):
                     state["target_os"] = "Stock Android" if state["target_os"] == "GrapheneOS" else "GrapheneOS"
                 selected_idx = 0
             else:
-                # Suspend curses, run subprocess, then resume
+                # Suspend curses cleanly using standard def_prog_mode
+                curses.def_prog_mode()
                 curses.endwin()
                 print("\n" * 2)
-                if target_cmd == "client.py":
-                    cmd_path = os.path.join(SCRIPT_DIR, "client.py")
-                    subprocess.call([sys.executable, cmd_path])
-                else:
-                    cmd_path = os.path.join(SCRIPTS_DIR, target_cmd)
-                    subprocess.call(["bash", cmd_path])
+                try:
+                    if target_cmd == "client.py":
+                        cmd_path = os.path.join(SCRIPT_DIR, "client.py")
+                        subprocess.call([sys.executable, cmd_path])
+                    else:
+                        cmd_path = os.path.join(SCRIPTS_DIR, target_cmd)
+                        subprocess.call(["bash", cmd_path])
+                except (KeyboardInterrupt, Exception):
+                    pass
 
                 print("\n\033[90m(^_^) [ok] Task complete. Press Enter to return to p1xi3 TUI...\033[0m")
-                input()
-                # Re-initialize curses screen after return
-                stdscr.clear()
+                try:
+                    input()
+                except (KeyboardInterrupt, EOFError):
+                    pass
+
+                # Restore curses state cleanly without throwing endwin error
+                curses.reset_prog_mode()
                 curses.curs_set(0)
                 stdscr.keypad(True)
                 stdscr.timeout(150)
                 curses.flushinp()
+                stdscr.clear()
+                stdscr.refresh()
 
 def main():
     # Start monitor thread
@@ -446,9 +456,15 @@ def main():
     t.start()
     try:
         curses.wrapper(run_curses_ui)
+    except (curses.error, KeyboardInterrupt):
+        pass
     finally:
         stop_monitor.set()
         t.join(timeout=1.0)
+        try:
+            curses.endwin()
+        except Exception:
+            pass
     print("\np1xi3 (._.) session closed. Farewell!\n")
 
 if __name__ == "__main__":
