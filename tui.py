@@ -193,9 +193,23 @@ def draw_box(win, y, x, h, w, title=""):
     except curses.error:
         pass
 
+def drain_escape_sequence(win):
+    """Absorbs trailing escape sequence characters to prevent phantom key triggers."""
+    win.nodelay(True)
+    try:
+        while win.getch() != -1:
+            pass
+    finally:
+        win.timeout(150)
+
 def run_curses_ui(stdscr):
     curses.curs_set(0)
+    curses.noecho()
+    curses.cbreak()
+    stdscr.keypad(True)
     curses.use_default_colors()
+    stdscr.timeout(150) # Responsive 150ms frame loop without key repeats
+    curses.flushinp()
 
     # Define color pairs if terminal supports them
     if curses.has_colors():
@@ -210,7 +224,6 @@ def run_curses_ui(stdscr):
         for i in range(1, 7):
             curses.init_pair(i, -1, -1)
 
-    stdscr.nodelay(True) # Non-blocking input for live polling loop
     selected_idx = 0
 
     while True:
@@ -365,24 +378,30 @@ def run_curses_ui(stdscr):
             stdscr.addstr(bottom_y + 12, detail_x + 3, "• Ready. Press Enter to run the selected step.")
 
         # Footer Navigation Hints
-        hints = " [↑/↓ or j/k] Navigate  |  [Enter] Execute  |  [Tab] Switch Profile  |  [q] Quit "
+        hints = " [↑/↓ or j/k] Navigate  |  [Enter] Execute  |  [Tab/p] Switch Profile  |  [q] Quit "
         stdscr.addstr(max_y - 1, 3, hints, curses.A_DIM)
 
         stdscr.refresh()
 
         # Handle Keyboard Input
         ch = stdscr.getch()
+        if ch == -1:
+            continue
+
         if ch in [ord('q'), ord('Q')]:
             break
         elif ch in [curses.KEY_UP, ord('k')]:
             selected_idx = (selected_idx - 1) % len(items)
         elif ch in [curses.KEY_DOWN, ord('j')]:
             selected_idx = (selected_idx + 1) % len(items)
-        elif ch in [ord('\t'), ord('m'), ord('M')]:
-            # Toggle profile
+        elif ch in [ord('\t'), ord('p')]:
+            # Toggle profile with Tab or 'p' (Profile)
             with state["lock"]:
                 state["target_os"] = "Stock Android" if state["target_os"] == "GrapheneOS" else "GrapheneOS"
             selected_idx = 0
+        elif ch == 27:
+            # Drain escape sequences (e.g. mouse tracking, function keys)
+            drain_escape_sequence(stdscr)
         elif ch in [10, 13, curses.KEY_ENTER]:
             # Execute selected action
             _, target_cmd, _ = items[selected_idx]
@@ -408,8 +427,9 @@ def run_curses_ui(stdscr):
                 # Re-initialize curses screen after return
                 stdscr.clear()
                 curses.curs_set(0)
-
-        time.sleep(0.05)
+                stdscr.keypad(True)
+                stdscr.timeout(150)
+                curses.flushinp()
 
 def main():
     # Start monitor thread
