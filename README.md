@@ -16,13 +16,21 @@
 └──────────────────────────────────────┘                               └──────────────────────────────────────┘
 ```
 
-### Hardware Constraints (Tensor G2)
+### Hardware Constraints & Curated Model Catalog (Tensor G2, 8GB RAM)
 - **RAM**: 8 GB LPDDR5 (~4.5–5.5 GB usable after OS overhead).
-- **Recommended Model Profiles**:
-  - `Llama-3.2-1B-Instruct` (Q4_K_M ~780 MB) — ~15-22 tokens/sec
-  - `Llama-3.2-3B-Instruct` (Q4_K_M ~2.0 GB) — ~8-12 tokens/sec
-  - `Qwen2.5-1.5B-Instruct` (Q4_K_M ~986 MB) — ~14-18 tokens/sec
-  - `Qwen2.5-3B-Instruct` (Q4_K_M ~2.17 GB) — ~7-11 tokens/sec
+- **Curated Model Profiles**:
+  - **Coding & Dev**:
+    - `Qwen2.5-Coder-1.5B-Instruct` (Q4_K_M ~986 MB) — Fast code completion (~14-18 t/s)
+    - `Qwen2.5-Coder-3B-Instruct` (Q4_K_M ~2.2 GB) — SOTA 3B technical assistant (~8-11 t/s)
+  - **Reasoning & Math**:
+    - `DeepSeek-R1-Distill-Qwen-1.5B` (Q4_K_M ~1.1 GB) — Chain-of-thought step-by-step reasoning (~12-16 t/s)
+    - `Qwen2.5-1.5B-Instruct` (Q4_K_M ~986 MB) — Strong logic, math, and instruction following (~14-18 t/s)
+  - **General Conversation**:
+    - `Llama-3.2-1B-Instruct` (Q4_K_M ~780 MB) — Ultra fast, minimal battery draw (~18-22 t/s)
+    - `Llama-3.2-3B-Instruct` (Q4_K_M ~2.0 GB) — Balanced general knowledge and speed (~8-12 t/s)
+    - `SmolLM2-1.7B-Instruct` (Q4_K_M ~1.0 GB) — High efficiency conversational assistant
+  - **Ultra-Compact / Instant**:
+    - `SmolLM2-360M-Instruct` (Q8_0 ~380 MB) — Instant responses (>30 t/s), microscopic memory footprint
 
 ---
 
@@ -57,9 +65,10 @@ python3 wizard.py
 | **3. Graphene Air-Gap** | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
 | **3. Stock Hardening** | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |
 | **4. Provision Device** | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
-| **5. Push Model** | `./scripts/05_push_model.sh` | Downloads 1B/3B GGUF models and transfers them to the device via USB. |
-| **6. USB Bridge** | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11434 tcp:11434` and tests connection. |
-| **7. Chat Client** | `python3 client.py` | Host CLI interface streaming responses with tokens/sec metrics. |
+| **5. Push Model** | `./scripts/05_push_model.sh` | Downloads optimal coding, reasoning, or chat GGUF models and transfers them via USB. |
+| **6. Switch Model** | `./scripts/07_switch_model.sh` | Interactive switcher to hot-swap active models in memory on the device. |
+| **7. USB Bridge** | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11435 tcp:11434` with auto-collision prevention. |
+| **8. Chat Client** | `python3 client.py` | Host CLI interface streaming responses with tokens/sec metrics. |
 
 ---
 

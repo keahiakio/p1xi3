@@ -32,6 +32,7 @@ state = {
     "bridge_active": False,
     "host_port": 11435,
     "llm_online": False,
+    "active_model": "None",
     "last_check": "",
     "fastboot_active": False,
     "target_os": "GrapheneOS"       # "GrapheneOS" or "Stock Android"
@@ -141,19 +142,22 @@ def monitor_thread_func():
         except Exception:
             pass
 
-        # 5. Check LLM Server on discovered port
+        # 5. Check LLM Server & Active Model on discovered port
         llm_on = False
+        active_mdl = "None"
         if br_active:
-            for endpoint in [f"http://127.0.0.1:{active_host_port}/v1/models", f"http://127.0.0.1:{active_host_port}/health"]:
-                try:
-                    req = urllib.request.Request(endpoint, method="GET")
-                    with urllib.request.urlopen(req, timeout=0.8) as resp:
-                        data = resp.read().decode("utf-8")
-                        if "llamacpp" in data or "panther" in data or "models" in data:
-                            llm_on = True
-                            break
-                except Exception:
-                    pass
+            try:
+                req = urllib.request.Request(f"http://127.0.0.1:{active_host_port}/v1/models", method="GET")
+                with urllib.request.urlopen(req, timeout=0.8) as resp:
+                    raw_data = resp.read().decode("utf-8")
+                    if "llamacpp" in raw_data or "models" in raw_data:
+                        llm_on = True
+                        parsed = json.loads(raw_data)
+                        if "data" in parsed and len(parsed["data"]) > 0:
+                            raw_id = parsed["data"][0].get("id", "")
+                            active_mdl = os.path.basename(raw_id).replace(".gguf", "")
+            except Exception:
+                pass
 
         # Commit to shared state
         with state["lock"]:
@@ -171,6 +175,7 @@ def monitor_thread_func():
             state["bridge_active"] = br_active
             state["host_port"] = active_host_port
             state["llm_online"] = llm_on
+            state["active_model"] = active_mdl
             state["last_check"] = time.strftime("%H:%M:%S")
 
         # Sleep with early exit check
@@ -298,6 +303,8 @@ def run_curses_ui(stdscr):
         stdscr.addstr(4, col3_x + 13, f"tcp:{snap['host_port']} [OK]" if snap['bridge_active'] else "Inactive", br_color | curses.A_BOLD)
         stdscr.addstr(5, col3_x, "LLM Server : ")
         stdscr.addstr(5, col3_x + 13, f"Online ({snap['host_port']})" if snap['llm_online'] else "Offline", llm_color | curses.A_BOLD)
+        stdscr.addstr(6, col3_x, "Model      : ")
+        stdscr.addstr(6, col3_x + 13, f"{snap['active_model'][:20]}" if snap['active_model'] != "None" else "None", curses.color_pair(2) if snap['active_model'] != "None" else curses.A_DIM)
 
         # ---------------------------------------------------------------------
         # BOTTOM LEFT: Action Menu List
@@ -314,23 +321,25 @@ def run_curses_ui(stdscr):
                 ("1. Check Device & OEM Unlock", "01_check_device.sh", "Verify fastboot, ADB, and OEM unlocking permission."),
                 ("2. Flash GrapheneOS (panther)", "02_flash_guide.sh", "Reboot to bootloader & follow GrapheneOS WebUSB/fastboot."),
                 ("3. Air-Gap Hardening Check", "03_airgap_harden.sh", "Verify physical SIM, Airplane mode, and GrapheneOS toggles."),
-                ("4. Provision Termux & Compiler", "04_provision_device.sh", "Sideload Termux, revoke network permission & stage build."),
-                ("5. Download & Push GGUF Model", "05_push_model.sh", "Download 1B/3B GGUF model and push over USB."),
-                ("6. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11434 tcp:11434."),
-                ("7. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("8. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
-                ("9. Exit", "EXIT", "Quit p1xi3.")
+                ("4. Provision Termux & Engine", "04_provision_device.sh", "Sideload Termux, revoke network permission & stream binaries."),
+                ("5. Download & Push Model", "05_push_model.sh", "Download optimal coding, reasoning, or chat GGUF model."),
+                ("6. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
+                ("7. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
+                ("8. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("9. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
+                ("10. Exit", "EXIT", "Quit p1xi3.")
             ]
         else: # Stock Android
             items = [
                 ("1. Check Device & Carrier Info", "01_check_device.sh", "Inspect carrier SKU and ADB connectivity."),
                 ("2. Stock Air-Gap & Debloat", "03_stock_harden.sh", "Disable wireless radios, scanning, and stock telemetry."),
-                ("3. Provision Termux & Compiler", "04_provision_device.sh", "Sideload Termux & compile native llama-server."),
-                ("4. Download & Push GGUF Model", "05_push_model.sh", "Download 1B/3B GGUF model and push over USB."),
-                ("5. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11434 tcp:11434."),
-                ("6. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("7. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
-                ("8. Exit", "EXIT", "Quit p1xi3.")
+                ("3. Provision Termux & Engine", "04_provision_device.sh", "Sideload Termux & stream 16KB-aligned llama-server."),
+                ("4. Download & Push Model", "05_push_model.sh", "Download optimal coding, reasoning, or chat GGUF model."),
+                ("5. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
+                ("6. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
+                ("7. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("8. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
+                ("9. Exit", "EXIT", "Quit p1xi3.")
             ]
 
         if selected_idx >= len(items):
