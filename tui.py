@@ -333,11 +333,12 @@ def run_curses_ui(stdscr):
                 ("3. Air-Gap Hardening Check", "03_airgap_harden.sh", "Verify physical SIM, Airplane mode, and GrapheneOS toggles."),
                 ("4. Provision Termux & Engine", "04_provision_device.sh", "Sideload Termux, revoke network permission & stream binaries."),
                 ("5. Download & Push Model", "05_push_model.sh", "Download optimal coding, reasoning, or chat GGUF model."),
-                ("6. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
-                ("7. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
-                ("8. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("9. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
-                ("10. Exit", "EXIT", "Quit p1xi3.")
+                ("6. Check / Update Models", "08_update_models.sh", "Check upstream model revisions & push updates via USB."),
+                ("7. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
+                ("8. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
+                ("9. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("10. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
+                ("11. Exit", "EXIT", "Quit p1xi3.")
             ]
         else: # Stock Android
             items = [
@@ -345,11 +346,12 @@ def run_curses_ui(stdscr):
                 ("2. Stock Air-Gap & Debloat", "03_stock_harden.sh", "Disable wireless radios, scanning, and stock telemetry."),
                 ("3. Provision Termux & Engine", "04_provision_device.sh", "Sideload Termux & stream 16KB-aligned llama-server."),
                 ("4. Download & Push Model", "05_push_model.sh", "Download optimal coding, reasoning, or chat GGUF model."),
-                ("5. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
-                ("6. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
-                ("7. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("8. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
-                ("9. Exit", "EXIT", "Quit p1xi3.")
+                ("5. Check / Update Models", "08_update_models.sh", "Check upstream model revisions & push updates via USB."),
+                ("6. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
+                ("7. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
+                ("8. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("9. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
+                ("10. Exit", "EXIT", "Quit p1xi3.")
             ]
 
         if selected_idx >= len(items):
@@ -494,7 +496,12 @@ def run_curses_ui(stdscr):
             safe_addstr(stdscr, menu_start_y + 1, detail_x + 3, curr_label, curses.color_pair(1) | curses.A_BOLD)
             safe_addstr(stdscr, menu_start_y + 3, detail_x + 3, f"Description: {curr_desc[:detail_w - 18]}")
 
-            if "Download" in curr_label or "Switch" in curr_label:
+            if "Update" in curr_label:
+                safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Air-Gapped Update Security:", curses.A_BOLD)
+                safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Air-gap strictly maintained: Pixel remains completely offline.")
+                safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Host checks HF repository commits on your explicit command.")
+                safe_addstr(stdscr, menu_start_y + 8, detail_x + 3, "• Selected updates stream to phone over physical USB cable only.")
+            elif "Download" in curr_label or "Switch" in curr_label:
                 safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Curated Models & Workloads:", curses.A_BOLD)
                 safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Coding   : Qwen2.5-Coder 1.5B/3B (Python/JS, Refactoring)")
                 safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Reasoning: DeepSeek-R1 Distill 1.5B (Step-by-step logic, Math)")

@@ -14,8 +14,9 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODELS_DIR="$PROJECT_DIR/models"
+META_DIR="$MODELS_DIR/.metadata"
 
-mkdir -p "$MODELS_DIR"
+mkdir -p "$MODELS_DIR" "$META_DIR"
 
 CATALOG=(
     "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf|https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf|Qwen 2.5 Coder 1.5B|~986 MB|[Coding] [Python/JS/Bash] [Scripting]|Fast code completion & inline suggestions (~14-18 t/s)"
@@ -95,6 +96,11 @@ deploy_single_model() {
     if [ ! -f "$local_path" ]; then
         echo -e "  ${YELLOW}Downloading from HuggingFace to host cache...${NC}"
         curl -L --progress-bar -o "$local_path" "$m_url"
+        # Save repo commit metadata if available
+        if [ -n "$m_url" ]; then
+            COMMIT_HASH=$(curl -sI -m 5 "$m_url" 2>/dev/null | grep -i "^x-repo-commit:" | awk '{print $2}' | tr -d '\r' || true)
+            [ -n "$COMMIT_HASH" ] && echo "$COMMIT_HASH" > "$META_DIR/$m_file.meta"
+        fi
         echo -e "  ${GREEN}(^_^) [ok] Download complete.${NC}"
     else
         echo -e "  Found cached copy in host models directory."

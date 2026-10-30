@@ -125,6 +125,7 @@ p1xi3 status     # Check phone connection, battery, carrier SKU & OEM lock
 p1xi3 bridge     # Start the adb port forward bridge (tcp:11435 -> tcp:11434)
 p1xi3 switch     # Hot-swap between installed models on the device
 p1xi3 models     # Browse, download, and push curated GGUF models
+p1xi3 update     # Check for model updates upstream & push to airgapped phone
 p1xi3 provision  # Sideload Termux & stream native llama-server
 p1xi3 harden     # Run air-gap security hardening checklist (--stock for stock Android)
 p1xi3 --help     # View all global CLI options
@@ -154,6 +155,7 @@ p1xi3 --help     # View all global CLI options
 | `p1xi3 bridge` | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11435 tcp:11434` with auto-collision prevention. |
 | `p1xi3 switch` | `./scripts/07_switch_model.sh` | Interactive switcher to hot-swap active models in memory on the device. |
 | `p1xi3 models` | `./scripts/05_push_model.sh` | Downloads individual models or the complete ~10.5 GB suite and streams to device. |
+| `p1xi3 update` | `./scripts/08_update_models.sh` | Checks upstream repository commits on host and updates air-gapped device over USB. |
 | `p1xi3 provision` | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
 | `p1xi3 harden` | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
 | `p1xi3 harden --stock` | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |

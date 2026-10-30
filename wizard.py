@@ -32,12 +32,13 @@ def menu():
         print("  \033[1;32m3)\033[0m Air-Gap Security Checklist & Hardening")
         print("  \033[1;32m4)\033[0m Provision Termux & Native llama-server")
         print("  \033[1;32m5)\033[0m Download & Push GGUF Model (Coding, Reasoning, Chat)")
-        print("  \033[1;32m6)\033[0m Switch / Load Active Model on Device")
-        print("  \033[1;32m7)\033[0m Start USB Bridge (Forward port)")
-        print("  \033[1;32m8)\033[0m Launch Host Chat Client (Interactive REPL)")
-        print("  \033[1;31m9)\033[0m Exit\n")
+        print("  \033[1;32m6)\033[0m Check / Update Models (Air-Gapped USB)")
+        print("  \033[1;32m7)\033[0m Switch / Load Active Model on Device")
+        print("  \033[1;32m8)\033[0m Start USB Bridge (Forward port)")
+        print("  \033[1;32m9)\033[0m Launch Host Chat Client (Interactive REPL)")
+        print("  \033[1;31m10)\033[0m Exit\n")
 
-        choice = input("\033[1;33mSelect an option [1-9]: \033[0m").strip()
+        choice = input("\033[1;33mSelect an option [1-10]: \033[0m").strip()
         print()
 
         if choice == "1":
@@ -51,17 +52,19 @@ def menu():
         elif choice == "5":
             run_script("05_push_model.sh")
         elif choice == "6":
-            run_script("07_switch_model.sh")
+            run_script("08_update_models.sh")
         elif choice == "7":
-            run_script("06_start_bridge.sh")
+            run_script("07_switch_model.sh")
         elif choice == "8":
+            run_script("06_start_bridge.sh")
+        elif choice == "9":
             client_path = os.path.join(SCRIPT_DIR, "client.py")
             subprocess.call([sys.executable, client_path])
-        elif choice == "9" or choice.lower() in ["exit", "q"]:
+        elif choice == "10" or choice.lower() in ["exit", "q"]:
             print("Exiting wizard.")
             break
         else:
-            print("\033[31mInvalid option. Please choose 1-8.\033[0m")
+            print("\033[31mInvalid option. Please choose 1-10.\033[0m")
 
         input("\n\033[90mPress Enter to return to main menu...\033[0m")
         print("\n" * 2)
