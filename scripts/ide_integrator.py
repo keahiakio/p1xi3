@@ -11,6 +11,7 @@ import json
 import re
 import time
 import shutil
+import subprocess
 import urllib.request
 import urllib.error
 
@@ -250,8 +251,12 @@ def configure_zed(info):
     with open(cfg_file, "w", encoding="utf-8") as f:
         json.dump(current_cfg, f, indent=2)
 
+    # Zed requires P1XI3_API_KEY environment variable for authentication when DBus keychain is absent
+    setup_p1xi3_env_vars()
+
     print(f"  {GREEN}(^_^) [ok] Configured Zed settings:{NC} {cfg_file}")
     print(f"       • OpenAI-compatible provider 'p1xi3' registered at {API_BASE}")
+    print(f"       • Exported P1XI3_API_KEY to user shell & session for credential auth")
     print(f"       • Agent & Assistant Panel default set to p1xi3 Qwen 2.5 Coder")
     print(f"       • Inline Assist (Ctrl+Enter) linked to Pixel 7 USB")
 
@@ -357,29 +362,81 @@ return {{
     print(f"       • Ready for avante.nvim & codecompanion.nvim")
     print(f"       • Load with: require('p1xi3') in your init.lua")
 
-def configure_shell_env(info):
+def setup_p1xi3_env_vars():
+    """Configures P1XI3_API_KEY, OPENAI_API_KEY, and endpoints across shells & desktop environments."""
     home = os.path.expanduser("~")
-    targets = [os.path.join(home, ".bashrc"), os.path.join(home, ".zshrc")]
-    configured = 0
+    configured_places = []
 
-    snippet = f"""
+    posix_snippet = f"""
 # p1xi3 (._.) Local Air-Gapped USB LLM Agent Endpoint
 export OPENAI_API_BASE="{API_BASE}"
-export OPENAI_API_KEY="p1xi3"
 export OPENAI_BASE_URL="{API_BASE}"
+export OPENAI_API_KEY="p1xi3"
+export P1XI3_API_KEY="p1xi3"
 """
-    for t in targets:
-        if os.path.exists(t):
-            with open(t, "r", encoding="utf-8") as f:
+    # 1. POSIX shells (bash, zsh, profile)
+    for rc in [".bashrc", ".zshrc", ".profile"]:
+        rc_path = os.path.join(home, rc)
+        if os.path.exists(rc_path):
+            with open(rc_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            if "p1xi3" not in content:
-                with open(t, "a", encoding="utf-8") as f:
-                    f.write(snippet)
-                print(f"  {GREEN}(^_^) [ok] Exported OPENAI_API_BASE into:{NC} {t}")
-                configured += 1
+            if "P1XI3_API_KEY" not in content:
+                with open(rc_path, "a", encoding="utf-8") as f:
+                    f.write(posix_snippet)
+                configured_places.append(rc)
 
-    if configured > 0:
-        print(f"       • Instant support for CLI agents: Aider, Ollama CLI, LangChain, curl")
+    # 2. Fish shell
+    fish_dir = os.path.join(home, ".config", "fish")
+    if os.path.exists(fish_dir):
+        fish_conf_d = os.path.join(fish_dir, "conf.d")
+        os.makedirs(fish_conf_d, exist_ok=True)
+        fish_file = os.path.join(fish_conf_d, "p1xi3.fish")
+        fish_snippet = f"""# p1xi3 (._.) Local Air-Gapped USB LLM Agent Endpoint
+set -gx OPENAI_API_BASE "{API_BASE}"
+set -gx OPENAI_BASE_URL "{API_BASE}"
+set -gx OPENAI_API_KEY "p1xi3"
+set -gx P1XI3_API_KEY "p1xi3"
+"""
+        with open(fish_file, "w", encoding="utf-8") as f:
+            f.write(fish_snippet)
+        configured_places.append("fish")
+
+    # 3. Systemd environment.d (for Wayland / Sway / systemd GUI session)
+    env_d = os.path.join(home, ".config", "environment.d")
+    os.makedirs(env_d, exist_ok=True)
+    env_file = os.path.join(env_d, "p1xi3.conf")
+    with open(env_file, "w", encoding="utf-8") as f:
+        f.write(f"""OPENAI_API_BASE={API_BASE}
+OPENAI_BASE_URL={API_BASE}
+OPENAI_API_KEY=p1xi3
+P1XI3_API_KEY=p1xi3
+""")
+    configured_places.append("environment.d")
+
+    # 4. Immediate systemd user environment
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "set-environment",
+             "P1XI3_API_KEY=p1xi3",
+             "OPENAI_API_KEY=p1xi3",
+             f"OPENAI_API_BASE={API_BASE}",
+             f"OPENAI_BASE_URL={API_BASE}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False
+        )
+    except Exception:
+        pass
+
+    return configured_places
+
+def configure_shell_env(info):
+    places = setup_p1xi3_env_vars()
+    if places:
+        print(f"  {GREEN}(^_^) [ok] Exported OPENAI & P1XI3 environment variables into:{NC} {', '.join(places)}")
+    else:
+        print(f"  {GREEN}(^_^) [ok] Shell environment already up to date.{NC}")
+    print(f"       • Instant support for Zed, Aider, Ollama CLI, LangChain, curl")
 
 def main():
     print_header()
