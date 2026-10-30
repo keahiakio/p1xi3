@@ -260,3 +260,9 @@ This automatically detects and configures:
 - **Project License**: Licensed under the [MIT License](LICENSE).
 - **Compliance & Attribution**: Full licensing terms for upstream components (`llama.cpp`, `Termux`, `GrapheneOS`) and model weights (`Llama 3.2`, `Qwen 2.5`, `DeepSeek`, `SmolLM2`) are detailed in [COMPLIANCE.md](COMPLIANCE.md).
 
+---
+
+## AI Disclosure
+
+This is an AI-assisted project. Code and documentation were developed with the assistance of AI tools.
+
