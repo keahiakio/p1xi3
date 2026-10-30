@@ -110,7 +110,7 @@ adb shell "run-as com.termux /data/data/com.termux/files/usr/bin/bash -c 'pkill 
 sleep 1
 
 # Launch new server in background inside Termux
-adb shell "run-as com.termux /data/data/com.termux/files/usr/bin/bash -c 'export LD_LIBRARY_PATH=/data/data/com.termux/files/home/llama:\$LD_LIBRARY_PATH; nohup /data/data/com.termux/files/home/llama/llama-server -m \"$SELECTED_MODEL_PATH\" --host 127.0.0.1 --port 11434 -c 2048 -t 4 > /data/data/com.termux/files/home/llama.log 2>&1 &'"
+adb shell "run-as com.termux /data/data/com.termux/files/usr/bin/bash -c 'export LD_LIBRARY_PATH=/data/data/com.termux/files/home/llama:\$LD_LIBRARY_PATH; nohup /data/data/com.termux/files/home/llama/llama-server -m \"$SELECTED_MODEL_PATH\" --host 127.0.0.1 --port 11434 -c 16384 -t 4 > /data/data/com.termux/files/home/llama.log 2>&1 &'"
 
 echo "Waiting for model to initialize into Tensor G2 memory..."
 sleep 2

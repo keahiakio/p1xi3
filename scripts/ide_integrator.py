@@ -192,22 +192,22 @@ def configure_zed(info):
         {
             "name": "qwen2.5-coder-1.5b-instruct-q4_k_m",
             "display_name": "p1xi3 Qwen 2.5 Coder 1.5B (Fast USB Agent)",
-            "max_tokens": 4096
+            "max_tokens": 16384
         },
         {
             "name": "qwen2.5-coder-3b-instruct-q4_k_m",
             "display_name": "p1xi3 Qwen 2.5 Coder 3B (Architecture/Refactor)",
-            "max_tokens": 4096
+            "max_tokens": 16384
         },
         {
             "name": "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M",
             "display_name": "p1xi3 DeepSeek R1 Distill 1.5B (CoT Reasoning)",
-            "max_tokens": 4096
+            "max_tokens": 16384
         },
         {
             "name": "Llama-3.2-1B-Instruct-Q4_K_M",
             "display_name": "p1xi3 Llama 3.2 1B (Low Battery / Rapid Chat)",
-            "max_tokens": 4096
+            "max_tokens": 16384
         }
     ]
 
