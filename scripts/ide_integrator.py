@@ -238,17 +238,15 @@ def configure_zed(info):
     current_cfg.pop("assistant", None)
     current_cfg.pop("inline_assist", None)
 
-    # Set modern agent & inline assistant defaults (Zed 1.20+)
+    # Set modern agent defaults (Zed 1.20+) - dedicated to Agent Panel
     if "agent" not in current_cfg or not isinstance(current_cfg["agent"], dict):
         current_cfg["agent"] = {}
     current_cfg["agent"]["default_model"] = {
         "provider": "p1xi3",
         "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
     }
-    current_cfg["agent"]["inline_assistant_model"] = {
-        "provider": "p1xi3",
-        "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
-    }
+    # Keep inline assistant free from device to prevent competing requests/cache thrashing
+    current_cfg["agent"].pop("inline_assistant_model", None)
 
     # Configure p1xi3 as an external agent server (ACP) if cline is installed
     cline_bin = shutil.which("cline")

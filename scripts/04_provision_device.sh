@@ -87,7 +87,7 @@ if [ -z \"\$MODEL\" ]; then
     exit 1
 fi
 echo \"(^_^) Starting llama-server with: \$MODEL\"
-/data/data/com.termux/files/home/llama/llama-server -m \"\$MODEL\" --host 127.0.0.1 --port 11434 -c 16384 -t 4
+/data/data/com.termux/files/home/llama/llama-server -m \"\$MODEL\" --host 127.0.0.1 --port 11434 -c 16384 -np 1 -t 4 -tb 4 -b 2048 -ub 512 -ctk q8_0 -ctv q8_0
 STARTEOF
 chmod +x /data/data/com.termux/files/home/start_server.sh
 '"
