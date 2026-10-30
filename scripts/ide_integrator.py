@@ -223,6 +223,17 @@ def configure_zed(info):
         "available_models": p1xi3_models
     }
 
+    # Migrate legacy agent.provider / assistant.provider to modern language_models if present
+    for section in ["agent", "assistant"]:
+        if section in current_cfg and isinstance(current_cfg[section], dict):
+            legacy_provider = current_cfg[section].pop("provider", None)
+            if legacy_provider and isinstance(legacy_provider, dict):
+                p_name = legacy_provider.get("name", "")
+                if p_name and p_name not in current_cfg["language_models"]:
+                    current_cfg["language_models"][p_name] = {
+                        k: v for k, v in legacy_provider.items() if k != "name"
+                    }
+
     # Set agent defaults (Zed 1.20+ Agent Panel)
     if "agent" not in current_cfg or not isinstance(current_cfg["agent"], dict):
         current_cfg["agent"] = {}
