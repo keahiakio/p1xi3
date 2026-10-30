@@ -295,6 +295,7 @@ def configure_zed(info):
 
     # Zed requires P1XI3_API_KEY environment variable for authentication when DBus keychain is absent
     setup_p1xi3_env_vars()
+    setup_linux_secrets_service()
 
     # Setup zeditor wrapper to ensure Zed inherits API keys regardless of how Sway/desktop launches it
     zed_bin = shutil.which("zeditor") or shutil.which("zed")
@@ -452,6 +453,35 @@ return {{
     print(f"  {GREEN}(^_^) [ok] Created Neovim integration module:{NC} {snippet_file}")
     print(f"       • Ready for avante.nvim & codecompanion.nvim")
     print(f"       • Load with: require('p1xi3') in your init.lua")
+
+def setup_linux_secrets_service():
+    """Ensures org.freedesktop.secrets D-Bus service is activatable on Linux (fixes missing keychain on Sway/Wayland)."""
+    if sys.platform != "linux":
+        return
+    home = os.path.expanduser("~")
+    services_dir = os.path.join(home, ".local", "share", "dbus-1", "services")
+    service_file = os.path.join(services_dir, "org.freedesktop.secrets.service")
+    if not os.path.exists(service_file):
+        ksecretd_bin = shutil.which("ksecretd") or "/usr/bin/ksecretd"
+        gnome_bin = shutil.which("gnome-keyring-daemon")
+        daemon_exec = None
+        if os.path.exists(ksecretd_bin):
+            daemon_exec = ksecretd_bin
+        elif gnome_bin:
+            daemon_exec = f"{gnome_bin} --start --components=secrets"
+        if daemon_exec:
+            os.makedirs(services_dir, exist_ok=True)
+            with open(service_file, "w", encoding="utf-8") as f:
+                f.write(f"[D-BUS Service]\nName=org.freedesktop.secrets\nExec={daemon_exec}\n")
+            try:
+                subprocess.run(
+                    ["busctl", "--user", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "ReloadConfig"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False
+                )
+            except Exception:
+                pass
 
 def setup_p1xi3_env_vars():
     """Configures P1XI3_API_KEY, OPENAI_API_KEY, and endpoints across shells & desktop environments."""
