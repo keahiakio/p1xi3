@@ -259,6 +259,46 @@ def configure_zed(info):
         }
     }
 
+    # Configure p1xi3 as an external agent server (ACP) if cline is installed
+    cline_bin = shutil.which("cline")
+    if cline_bin:
+        if "agent_servers" not in current_cfg or not isinstance(current_cfg["agent_servers"], dict):
+            current_cfg["agent_servers"] = {}
+        p1xi3_data_dir = os.path.expanduser("~/.p1xi3/cline_data")
+        os.makedirs(p1xi3_data_dir, exist_ok=True)
+        try:
+            subprocess.run(
+                [
+                    cline_bin, "auth",
+                    "-p", "openai-compatible",
+                    "-b", API_BASE,
+                    "-m", "qwen2.5-coder-1.5b-instruct-q4_k_m",
+                    "-k", "p1xi3",
+                    "--data-dir", p1xi3_data_dir
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False
+            )
+        except Exception:
+            pass
+
+        current_cfg["agent_servers"]["p1xi3"] = {
+            "type": "custom",
+            "command": "cline",
+            "args": [
+                "--acp",
+                "--data-dir",
+                p1xi3_data_dir
+            ],
+            "env": {
+                "OPENAI_API_BASE": API_BASE,
+                "OPENAI_BASE_URL": API_BASE,
+                "OPENAI_API_KEY": "p1xi3",
+                "P1XI3_API_KEY": "p1xi3"
+            }
+        }
+
     with open(cfg_file, "w", encoding="utf-8") as f:
         json.dump(current_cfg, f, indent=2)
 
@@ -266,6 +306,8 @@ def configure_zed(info):
     setup_p1xi3_env_vars()
 
     print(f"  {GREEN}(^_^) [ok] Configured Zed settings:{NC} {cfg_file}")
+    if cline_bin:
+        print(f"       • External Agent 'p1xi3' registered under agent_servers (ACP)")
     print(f"       • OpenAI-compatible provider 'p1xi3' registered at {API_BASE}")
     print(f"       • Exported P1XI3_API_KEY to user shell & session for credential auth")
     print(f"       • Agent & Assistant Panel default set to p1xi3 Qwen 2.5 Coder")
