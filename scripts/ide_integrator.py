@@ -234,29 +234,20 @@ def configure_zed(info):
                         k: v for k, v in legacy_provider.items() if k != "name"
                     }
 
-    # Set agent defaults (Zed 1.20+ Agent Panel)
+    # Clean up deprecated keys from older Zed schemas
+    current_cfg.pop("assistant", None)
+    current_cfg.pop("inline_assist", None)
+
+    # Set modern agent & inline assistant defaults (Zed 1.20+)
     if "agent" not in current_cfg or not isinstance(current_cfg["agent"], dict):
         current_cfg["agent"] = {}
     current_cfg["agent"]["default_model"] = {
         "provider": "p1xi3",
         "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
     }
-
-    # Set assistant & inline_assist defaults (Zed Assistant Panel & Inline Assist)
-    current_cfg["assistant"] = {
-        "version": "2",
-        "default_model": {
-            "provider": "p1xi3",
-            "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
-        }
-    }
-
-    current_cfg["inline_assist"] = {
-        "version": "2",
-        "default_model": {
-            "provider": "p1xi3",
-            "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
-        }
+    current_cfg["agent"]["inline_assistant_model"] = {
+        "provider": "p1xi3",
+        "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
     }
 
     # Configure p1xi3 as an external agent server (ACP) if cline is installed
@@ -304,6 +295,53 @@ def configure_zed(info):
 
     # Zed requires P1XI3_API_KEY environment variable for authentication when DBus keychain is absent
     setup_p1xi3_env_vars()
+
+    # Setup zeditor wrapper to ensure Zed inherits API keys regardless of how Sway/desktop launches it
+    zed_bin = shutil.which("zeditor") or shutil.which("zed")
+    if zed_bin and zed_bin != os.path.expanduser("~/.local/bin/zeditor"):
+        local_bin = os.path.expanduser("~/.local/bin")
+        os.makedirs(local_bin, exist_ok=True)
+        wrapper_path = os.path.join(local_bin, "zeditor")
+        with open(wrapper_path, "w", encoding="utf-8") as f:
+            f.write(f"""#!/usr/bin/env bash
+export P1XI3_API_KEY="${{P1XI3_API_KEY:-p1xi3}}"
+export OPENAI_API_KEY="${{OPENAI_API_KEY:-p1xi3}}"
+export OPENAI_API_BASE="${{OPENAI_API_BASE:-{API_BASE}}}"
+export OPENAI_BASE_URL="${{OPENAI_BASE_URL:-{API_BASE}}}"
+exec {zed_bin} "$@"
+""")
+        os.chmod(wrapper_path, 0o755)
+        symlink_zed = os.path.join(local_bin, "zed")
+        try:
+            if os.path.islink(symlink_zed) or os.path.exists(symlink_zed):
+                os.remove(symlink_zed)
+            os.symlink(wrapper_path, symlink_zed)
+        except Exception:
+            pass
+
+        apps_dir = os.path.expanduser("~/.local/share/applications")
+        os.makedirs(apps_dir, exist_ok=True)
+        desktop_file = os.path.join(apps_dir, "dev.zed.Zed.desktop")
+        with open(desktop_file, "w", encoding="utf-8") as f:
+            f.write(f"""[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Zed
+GenericName=Text Editor
+Comment=A high-performance, multiplayer code editor.
+TryExec={wrapper_path}
+StartupNotify=true
+Exec={wrapper_path} %U
+Icon=zed
+Categories=Utility;TextEditor;Development;IDE;
+Keywords=zed;
+MimeType=text/plain;application/x-zerosize;x-scheme-handler/zed;
+Actions=NewWorkspace;
+
+[Desktop Action NewWorkspace]
+Exec={wrapper_path} --new %U
+Name=Open a new workspace
+""")
 
     print(f"  {GREEN}(^_^) [ok] Configured Zed settings:{NC} {cfg_file}")
     if cline_bin:
