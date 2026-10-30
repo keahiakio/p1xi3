@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+p1xi3 CLI (._.)
+Global CLI entrypoint for the Pixel 7 Air-Gapped USB LLM Toolkit.
+Enables running the TUI dashboard, host chat client, USB bridge,
+and provisioning commands from any working directory.
+"""
+
+import os
+import sys
+import subprocess
+
+# Resolve the canonical root directory of p1xi3 (handles symlinks)
+PROJECT_DIR = os.path.dirname(os.path.realpath(__file__))
+SCRIPTS_DIR = os.path.join(PROJECT_DIR, "scripts")
+
+VERSION = "1.1.0"
+
+# ANSI Colors
+CYAN = "\033[1;36m"
+GREEN = "\033[1;32m"
+YELLOW = "\033[1;33m"
+BLUE = "\033[1;34m"
+RED = "\033[1;31m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+NC = "\033[0m"
+
+HELP_TEXT = f"""{CYAN}p1xi3 (._.) - Pixel 7 Air-Gapped USB LLM Toolkit (v{VERSION}){NC}
+
+{BOLD}USAGE:{NC}
+  p1xi3 [command] [options]
+
+{BOLD}CORE COMMANDS:{NC}
+  {GREEN}p1xi3{NC}                 Launch the interactive TUI dashboard (default)
+  {GREEN}p1xi3 tui{NC}             Launch the responsive Rust-style curses TUI
+  {GREEN}p1xi3 chat{NC}            Launch the host USB streaming chat client (interactive REPL)
+  {GREEN}p1xi3 status{NC}          Check ADB / Fastboot device status, carrier SKU & OEM lock
+  {GREEN}p1xi3 bridge{NC}          Start the USB port forward bridge (tcp:11435 -> tcp:11434)
+  {GREEN}p1xi3 switch{NC}          Interactive hot-switcher for installed models on device
+  {GREEN}p1xi3 models{NC}          Browse, download, and push GGUF models to device
+  {GREEN}p1xi3 provision{NC}       Provision Termux and native 16KB-aligned llama-server
+  {GREEN}p1xi3 harden{NC}          Run air-gap security hardening checklist (use {DIM}--stock{NC} for stock Android)
+  {GREEN}p1xi3 flash{NC}           View GrapheneOS flashing guide (panther)
+  {GREEN}p1xi3 wizard{NC}          Launch CLI fallback setup wizard
+
+{BOLD}GLOBAL MANAGEMENT:{NC}
+  {GREEN}p1xi3 link{NC}            Install global symlink (~/.local/bin/p1xi3 and /usr/local/bin)
+  {GREEN}p1xi3 unlink{NC}          Remove global symlinks
+  {GREEN}p1xi3 version{NC}         Display p1xi3 version information
+  {GREEN}p1xi3 help{NC}            Show this help reference
+
+{BOLD}EXAMPLES:{NC}
+  p1xi3                      # Open full TUI dashboard
+  p1xi3 chat                 # Quick chat with phone's local LLM
+  p1xi3 status               # Quick phone connection and telemetry check
+  p1xi3 switch               # Hot-swap between installed models
+  p1xi3 link                 # Enable 'p1xi3' command anywhere in terminal
+"""
+
+def cmd_link():
+    """Installs symlinks so p1xi3 is globally executable from any directory."""
+    print(f"{BLUE}[*] Configuring global executable symlinks for p1xi3...{NC}")
+    target_bin = os.path.realpath(__file__)
+    user_bin = os.path.expanduser("~/.local/bin")
+    os.makedirs(user_bin, exist_ok=True)
+    user_link = os.path.join(user_bin, "p1xi3")
+
+    success = False
+    try:
+        if os.path.islink(user_link) or os.path.exists(user_link):
+            os.remove(user_link)
+        os.symlink(target_bin, user_link)
+        print(f"{GREEN}(^_^) [ok] Created user symlink:{NC} {user_link}")
+        success = True
+    except Exception as e:
+        print(f"{RED}[!] Failed to create user symlink in {user_bin}: {e}{NC}")
+
+    # Check /usr/local/bin
+    sys_link = "/usr/local/bin/p1xi3"
+    try:
+        if os.access("/usr/local/bin", os.W_OK):
+            if os.path.islink(sys_link) or os.path.exists(sys_link):
+                os.remove(sys_link)
+            os.symlink(target_bin, sys_link)
+            print(f"{GREEN}(^_^) [ok] Created system symlink:{NC} {sys_link}")
+    except Exception:
+        pass
+
+    # Check PATH
+    current_path = os.environ.get("PATH", "")
+    if user_bin not in current_path.split(os.pathsep):
+        print(f"\n{YELLOW}Note:{NC} {user_bin} is not in your $PATH.")
+        print("Add it to your shell configuration (e.g. ~/.bashrc or ~/.zshrc):")
+        print(f"  export PATH=\"{user_bin}:$PATH\"")
+    else:
+        print(f"\n{GREEN}{BOLD}p1xi3 is now globally executable!{NC} Type {CYAN}p1xi3{NC} from any directory.\n")
+
+def cmd_unlink():
+    """Removes global symlinks."""
+    user_link = os.path.expanduser("~/.local/bin/p1xi3")
+    sys_link = "/usr/local/bin/p1xi3"
+    removed = 0
+    for link_path in [user_link, sys_link]:
+        if os.path.islink(link_path) or os.path.exists(link_path):
+            try:
+                os.remove(link_path)
+                print(f"{GREEN}(^_^) [ok] Removed symlink:{NC} {link_path}")
+                removed += 1
+            except Exception as e:
+                print(f"{RED}[!] Error removing {link_path}: {e}{NC}")
+    if removed == 0:
+        print("No existing global p1xi3 symlinks were found.")
+
+def run_script(script_name, args=None):
+    """Executes a helper script from the scripts directory."""
+    script_path = os.path.join(SCRIPTS_DIR, script_name)
+    if not os.path.exists(script_path):
+        print(f"{RED}Error:{NC} Script not found at {script_path}")
+        sys.exit(1)
+    cmd = ["bash", script_path] + (args or [])
+    return subprocess.call(cmd)
+
+def main():
+    if len(sys.argv) < 2:
+        # Default behavior: Launch TUI dashboard
+        sys.path.insert(0, PROJECT_DIR)
+        import tui
+        try:
+            tui.main()
+        except KeyboardInterrupt:
+            print("\np1xi3 session closed.\n")
+        return
+
+    subcmd = sys.argv[1].lower()
+
+    if subcmd in ["help", "--help", "-h"]:
+        print(HELP_TEXT)
+    elif subcmd in ["version", "--version", "-v"]:
+        print(f"p1xi3 version {VERSION} (._.)")
+    elif subcmd in ["tui"]:
+        sys.path.insert(0, PROJECT_DIR)
+        import tui
+        try:
+            tui.main()
+        except KeyboardInterrupt:
+            print("\np1xi3 session closed.\n")
+    elif subcmd in ["chat", "client", "repl"]:
+        client_path = os.path.join(PROJECT_DIR, "client.py")
+        subprocess.call([sys.executable, client_path] + sys.argv[2:])
+    elif subcmd in ["status", "check"]:
+        sys.exit(run_script("01_check_device.sh", sys.argv[2:]))
+    elif subcmd in ["flash", "flashing"]:
+        sys.exit(run_script("02_flash_guide.sh", sys.argv[2:]))
+    elif subcmd in ["harden", "airgap"]:
+        if "--stock" in sys.argv:
+            sys.exit(run_script("03_stock_harden.sh", [a for a in sys.argv[2:] if a != "--stock"]))
+        else:
+            sys.exit(run_script("03_airgap_harden.sh", sys.argv[2:]))
+    elif subcmd in ["provision", "setup-phone"]:
+        sys.exit(run_script("04_provision_device.sh", sys.argv[2:]))
+    elif subcmd in ["models", "push", "download"]:
+        sys.exit(run_script("05_push_model.sh", sys.argv[2:]))
+    elif subcmd in ["bridge", "forward"]:
+        sys.exit(run_script("06_start_bridge.sh", sys.argv[2:]))
+    elif subcmd in ["switch", "swap"]:
+        sys.exit(run_script("07_switch_model.sh", sys.argv[2:]))
+    elif subcmd in ["wizard"]:
+        wizard_path = os.path.join(PROJECT_DIR, "wizard.py")
+        subprocess.call([sys.executable, wizard_path] + sys.argv[2:])
+    elif subcmd in ["link", "install-global", "enable-global"]:
+        cmd_link()
+    elif subcmd in ["unlink", "uninstall-global", "disable-global"]:
+        cmd_unlink()
+    else:
+        print(f"{RED}Unknown command:{NC} '{subcmd}'")
+        print("Run 'p1xi3 --help' for a list of available commands.")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

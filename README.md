@@ -111,41 +111,54 @@ pip install -r requirements.txt
 
 ---
 
-## Quick Start
+## Global CLI & Quick Start
 
-Launch the interactive Rust-style TUI:
+Once installed via `./install.sh` (or by running `./p1xi3 link`), `p1xi3` is **globally executable from any directory in your terminal**:
+
 ```bash
-cd /home/keahiakio/p1xi3
-python3 wizard.py
+# Launch interactive TUI dashboard (default)
+p1xi3
+
+# Or execute specific subcommands directly from anywhere:
+p1xi3 chat       # Start host USB streaming chat client (interactive REPL)
+p1xi3 status     # Check phone connection, battery, carrier SKU & OEM lock
+p1xi3 bridge     # Start the adb port forward bridge (tcp:11435 -> tcp:11434)
+p1xi3 switch     # Hot-swap between installed models on the device
+p1xi3 models     # Browse, download, and push curated GGUF models
+p1xi3 provision  # Sideload Termux & stream native llama-server
+p1xi3 harden     # Run air-gap security hardening checklist (--stock for stock Android)
+p1xi3 --help     # View all global CLI options
 ```
-*(Or run `python3 tui.py` directly. For headless/dumb terminal environments, pass `python3 wizard.py --cli`).*
 
 ### TUI Features & Controls
 - **Live Hardware Telemetry**: Continuously polls ADB, Fastboot, device model, battery %, carrier SKU, OEM unlock state, radio status (Airplane/Wi-Fi/BT), and USB bridge health in the background. No need to restart or re-enter!
-- **Dual Operating Profiles (`Tab` to toggle)**:
+- **Dynamic Multi-Breakpoint Resizing**: Automatically adapts between full dual-pane layout and compact stacked layout for split terminal windows down to `40x12`.
+- **Dual Operating Profiles (`Tab` or `p` to toggle)**:
   - **GrapheneOS Profile**: Complete wipe, bootloader unlocking, WebUSB/fastboot flashing, hardware verified boot.
   - **Stock Android Profile**: For devices with permanently carrier-locked bootloaders (e.g., Verizon). Hardens stock Android, disables background telemetry/radios via ADB, and provisions local LLMs without unlocking the bootloader.
 - **Controls**:
-  - `↑` / `↓` or `j` / `k` : Navigate actions
+  - `↑` / `↓` or `j` / `k` : Navigate actions (instant response, typematic debounce)
   - `Enter` : Execute highlighted action
-  - `Tab` or `m` : Toggle between **GrapheneOS** and **Stock Android** profiles
-  - `q` : Exit
+  - `Tab` or `p` : Toggle between **GrapheneOS** and **Stock Android** profiles
+  - `q` or `ESC` : Exit
 
 ---
 
-## Script Index
+## Command Reference
 
-| Step | Script | Description |
+| Command | Direct Script | Description |
 |---|---|---|
-| **1. Check Device** | `./scripts/01_check_device.sh` | Verifies ADB/Fastboot connectivity, battery level, carrier SKU, and OEM unlock permission. |
-| **2. Flash GrapheneOS** | `./scripts/02_flash_guide.sh` | Guided walkthrough for WebUSB installer or CLI fastboot flashing. |
-| **3. Graphene Air-Gap** | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
-| **3. Stock Hardening** | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |
-| **4. Provision Device** | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
-| **5. Push Model** | `./scripts/05_push_model.sh` | Downloads individual models or the complete ~10.5 GB suite (Option 'A') and streams to device. |
-| **6. Switch Model** | `./scripts/07_switch_model.sh` | Interactive switcher to hot-swap active models in memory on the device. |
-| **7. USB Bridge** | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11435 tcp:11434` with auto-collision prevention. |
-| **8. Chat Client** | `python3 client.py` | Host CLI interface streaming responses with tokens/sec metrics. |
+| `p1xi3` / `p1xi3 tui` | `./tui.py` | Launches the interactive, dynamically resizing TUI dashboard. |
+| `p1xi3 chat` | `python3 client.py` | Host CLI interface streaming responses with tokens/sec metrics over USB. |
+| `p1xi3 status` | `./scripts/01_check_device.sh` | Verifies ADB/Fastboot connectivity, battery level, carrier SKU, and OEM unlock permission. |
+| `p1xi3 bridge` | `./scripts/06_start_bridge.sh` | Establishes `adb forward tcp:11435 tcp:11434` with auto-collision prevention. |
+| `p1xi3 switch` | `./scripts/07_switch_model.sh` | Interactive switcher to hot-swap active models in memory on the device. |
+| `p1xi3 models` | `./scripts/05_push_model.sh` | Downloads individual models or the complete ~10.5 GB suite and streams to device. |
+| `p1xi3 provision` | `./scripts/04_provision_device.sh` | Installs Termux APK, pushes compilation script for native `llama-server`. |
+| `p1xi3 harden` | `./scripts/03_airgap_harden.sh` | Checks Airplane mode, disables Wi-Fi/BT, and hardens USB & permissions. |
+| `p1xi3 harden --stock` | `./scripts/03_stock_harden.sh` | Disables radios, location scanning, and Google telemetry on locked stock Android. |
+| `p1xi3 flash` | `./scripts/02_flash_guide.sh` | Guided walkthrough for WebUSB installer or CLI fastboot flashing. |
+| `p1xi3 link` | `p1xi3 link` | Re-links `p1xi3` into `~/.local/bin` and `/usr/local/bin`. |
 
 ---
 

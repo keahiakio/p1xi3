@@ -169,9 +169,30 @@ echo -e "${GREEN}(^_^) [ok] Directories ready: bin/, models/${NC}"
 
 # Ensure permissions on scripts and binaries
 echo -e "${BLUE}[*] Ensuring script execution permissions...${NC}"
-chmod +x "$SCRIPT_DIR/wizard.py" "$SCRIPT_DIR/tui.py" "$SCRIPT_DIR/client.py" "$SCRIPT_DIR/install.sh"
+chmod +x "$SCRIPT_DIR/p1xi3" "$SCRIPT_DIR/wizard.py" "$SCRIPT_DIR/tui.py" "$SCRIPT_DIR/client.py" "$SCRIPT_DIR/install.sh"
 chmod +x "$SCRIPT_DIR/scripts"/*.sh 2>/dev/null || true
 echo -e "${GREEN}(^_^) [ok] Executable permissions set.${NC}"
+
+# Configure Global Command Link
+echo -e "\n${BLUE}[*] Setting up global 'p1xi3' executable command...${NC}"
+USER_BIN="$HOME/.local/bin"
+mkdir -p "$USER_BIN"
+ln -sf "$SCRIPT_DIR/p1xi3" "$USER_BIN/p1xi3"
+echo -e "${GREEN}(^_^) [ok] Created symlink:${NC} $USER_BIN/p1xi3"
+
+if [ -w "/usr/local/bin" ]; then
+    ln -sf "$SCRIPT_DIR/p1xi3" "/usr/local/bin/p1xi3" 2>/dev/null || true
+fi
+
+case ":$PATH:" in
+    *":$USER_BIN:"*)
+        echo -e "${GREEN}[ok] Global execution verified: Type 'p1xi3' anywhere!${NC}"
+        ;;
+    *)
+        echo -e "${YELLOW}Note: Add $USER_BIN to your PATH to run 'p1xi3' anywhere:${NC}"
+        echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        ;;
+esac
 
 # Python Environment & Curses Validation
 echo -e "\n${BLUE}[*] Verifying Python runtime & curses support...${NC}"
@@ -206,5 +227,8 @@ else
 fi
 
 echo -e "\n${GREEN}${BOLD}Setup complete!${NC}"
-echo -e "Launch the interactive TUI wizard:"
-echo -e "  ${CYAN}python3 wizard.py${NC}  (or ${CYAN}./tui.py${NC})\n"
+echo -e "You can now run p1xi3 globally from any directory:"
+echo -e "  ${CYAN}p1xi3${NC}          (Interactive TUI dashboard)"
+echo -e "  ${CYAN}p1xi3 chat${NC}     (Host USB chat client)"
+echo -e "  ${CYAN}p1xi3 status${NC}   (Device & telemetry check)"
+echo -e "  ${CYAN}p1xi3 --help${NC}   (View all global CLI options)\n"
