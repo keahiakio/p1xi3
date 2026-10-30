@@ -48,6 +48,7 @@ HELP_TEXT = f"""{CYAN}p1xi3 (._.) - Pixel 7 Air-Gapped USB LLM Toolkit (v{VERSIO
 {BOLD}GLOBAL MANAGEMENT:{NC}
   {GREEN}p1xi3 link{NC}            Install global symlink (~/.local/bin/p1xi3 and /usr/local/bin)
   {GREEN}p1xi3 unlink{NC}          Remove global symlinks
+  {GREEN}p1xi3 credits{NC}         View acknowledgments for upstream projects & models
   {GREEN}p1xi3 version{NC}         Display p1xi3 version information
   {GREEN}p1xi3 help{NC}            Show this help reference
 
@@ -96,6 +97,39 @@ def cmd_link():
         print(f"  export PATH=\"{user_bin}:$PATH\"")
     else:
         print(f"\n{GREEN}{BOLD}p1xi3 is now globally executable!{NC} Type {CYAN}p1xi3{NC} from any directory.\n")
+
+def cmd_credits():
+    """Displays credits and references for projects and models that make p1xi3 possible."""
+    print(f"""{CYAN}==================================================================
+           p1xi3 (._.) : Credits & Acknowledgments
+=================================================================={NC}
+
+{BOLD}Infrastructure & Runtime Projects:{NC}
+  • {GREEN}llama.cpp{NC} (MIT) - Georgi Gerganov & ggml-org
+    https://github.com/ggml-org/llama.cpp
+    Pure C/C++ inference engine & official 16KB-page Android ARM64 builds.
+
+  • {GREEN}GrapheneOS{NC} (GPL/Apache/MIT) - The GrapheneOS Foundation
+    https://grapheneos.org
+    Hardened, private Android OS with verified boot and runtime network revocation.
+
+  • {GREEN}Termux{NC} (GPL-3.0) - Fredrik Fornwall & contributors
+    https://github.com/termux/termux-app
+    Sandboxed Android POSIX terminal environment running unrooted daemons.
+
+  • {GREEN}Android Open Source Project (AOSP){NC} (Apache-2.0)
+    https://source.android.com
+    Platform tools (adb/fastboot) enabling secure, zero-network USB socket bridging.
+
+{BOLD}Curated Open-Weight Models & Research:{NC}
+  • {YELLOW}Qwen 2.5 & Qwen 2.5 Coder{NC} (Apache-2.0) - Alibaba Cloud Qwen Team
+  • {YELLOW}DeepSeek-R1 Distill{NC} (MIT) - DeepSeek AI & Unsloth AI
+  • {YELLOW}Llama 3.2 1B & 3B{NC} (Llama 3.2 Community) - Meta AI Research
+  • {YELLOW}SmolLM2{NC} (Apache-2.0) - Hugging Face TB Team
+  • {YELLOW}GGUF Quantizations{NC} - Bartowski & community contributors
+
+See {BOLD}COMPLIANCE.md{NC} for complete license texts and terms.
+""")
 
 def cmd_unlink():
     """Removes global symlinks."""
@@ -175,6 +209,8 @@ def main():
         cmd_link()
     elif subcmd in ["unlink", "uninstall-global", "disable-global"]:
         cmd_unlink()
+    elif subcmd in ["credits", "credit", "thanks", "acknowledgments", "about"]:
+        cmd_credits()
     else:
         print(f"{RED}Unknown command:{NC} '{subcmd}'")
         print("Run 'p1xi3 --help' for a list of available commands.")

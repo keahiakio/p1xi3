@@ -59,3 +59,19 @@ Each model architecture and weight file distributed through HuggingFace has its 
 - **No Remote Telemetry**: `p1xi3` contains no telemetry, analytics, tracking, or network callbacks.
 - **Offline Integrity**: Once models and runtimes are downloaded to the host, all inference is performed on the local device across a physical USB cable without internet transmission.
 - **GrapheneOS Hardening**: Revoking network permission on GrapheneOS guarantees hardware and kernel isolation against external socket communication.
+
+---
+
+## 5. Acknowledgments & Upstream Repositories
+
+Special thanks and acknowledgment to the maintainers, researchers, and engineers behind:
+
+- **[ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)**: Georgi Gerganov and the GGML development team.
+- **[GrapheneOS](https://grapheneos.org)**: The GrapheneOS Foundation and security contributors.
+- **[Termux](https://github.com/termux/termux-app)**: Fredrik Fornwall and the Termux packaging team.
+- **[QwenLM](https://github.com/QwenLM/Qwen2.5)**: Alibaba Cloud's Qwen LLM Research Group.
+- **[DeepSeek-AI](https://github.com/deepseek-ai/DeepSeek-R1)**: DeepSeek Artificial Intelligence.
+- **[Meta AI Research](https://ai.meta.com/llama/)**: The Meta Llama research and engineering team.
+- **[Hugging Face](https://huggingface.co/)**: Loubna Ben Allal, Anton Lozhkov, and the Hugging Face TB team (`SmolLM2`).
+- **[Unsloth AI](https://github.com/unslothai/unsloth)**: Daniel Han and the Unsloth team for GGUF distillations and export tooling.
+- **[Bartowski](https://huggingface.co/bartowski)**: For high-precision GGUF quantization matrices.

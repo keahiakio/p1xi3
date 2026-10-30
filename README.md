@@ -216,6 +216,28 @@ p1xi3 --help     # View all global CLI options
 
 ---
 
+## Credits & Acknowledgments
+
+`p1xi3` stands on the shoulders of giants. This project is made possible thanks to the groundbreaking work of the open-source software, security, and machine learning communities:
+
+### Core Infrastructure & Runtimes
+- **[llama.cpp](https://github.com/ggml-org/llama.cpp)** (`Georgi Gerganov & ggml-org`): High-performance C/C++ LLM inference engine and official Android ARM64 builds (16KB page-aligned) powering fast, low-memory edge inference on the Pixel 7's Tensor G2.
+- **[GrapheneOS](https://grapheneos.org)** (`The GrapheneOS Project`): The hardened, security-focused mobile operating system providing hardware verified boot, sandboxing, and granular runtime network permission controls that make genuine hardware air-gapping possible.
+- **[Termux](https://github.com/termux/termux-app)** (`Fredrik Fornwall & Termux contributors`): Advanced terminal emulator and POSIX environment on Android that allows running native binary daemons without requiring device rooting.
+- **[Android Open Source Project (AOSP)](https://source.android.com)**: Platform tools (`adb` & `fastboot`) that establish zero-network physical USB forwarding channels (`adb forward`).
+
+### Model Research & Open Weights
+- **[Qwen Team / Alibaba Cloud](https://github.com/QwenLM/Qwen2.5)**: For developing the exceptional `Qwen2.5-Coder` and `Qwen2.5` model families under the Apache 2.0 license.
+- **[DeepSeek AI](https://github.com/deepseek-ai)**: For pioneering chain-of-thought reasoning models and open-weight distillation with `DeepSeek-R1` under the MIT license.
+- **[Meta AI](https://llama.meta.com/)**: For the highly efficient, low-latency `Llama-3.2-1B` and `Llama-3.2-3B` lightweight edge architectures.
+- **[Hugging Face TB](https://huggingface.co/HuggingFaceTB)**: For the compact, ultra-fast `SmolLM2` conversational models and datasets.
+- **Quantization & Distribution Contributors**:
+  - **[bartowski](https://huggingface.co/bartowski)** for high-precision GGUF quantizations.
+  - **[Unsloth AI](https://github.com/unslothai/unsloth)** for quantized DeepSeek-R1 GGUF releases.
+  - **[Hugging Face Hub](https://huggingface.co)** for open model hosting infrastructure.
+
+---
+
 ## License & Compliance
 
 - **Project License**: Licensed under the [MIT License](LICENSE).
