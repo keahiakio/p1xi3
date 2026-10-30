@@ -35,10 +35,11 @@ def menu():
         print("  \033[1;32m6)\033[0m Check / Update Models (Air-Gapped USB)")
         print("  \033[1;32m7)\033[0m Switch / Load Active Model on Device")
         print("  \033[1;32m8)\033[0m Start USB Bridge (Forward port)")
-        print("  \033[1;32m9)\033[0m Launch Host Chat Client (Interactive REPL)")
-        print("  \033[1;31m10)\033[0m Exit\n")
+        print("  \033[1;32m9)\033[0m Link IDEs & Coding Agents (Zed, VS Code, JetBrains, Neovim)")
+        print("  \033[1;32m10)\033[0m Launch Host Chat Client (Interactive REPL)")
+        print("  \033[1;31m11)\033[0m Exit\n")
 
-        choice = input("\033[1;33mSelect an option [1-10]: \033[0m").strip()
+        choice = input("\033[1;33mSelect an option [1-11]: \033[0m").strip()
         print()
 
         if choice == "1":
@@ -58,13 +59,15 @@ def menu():
         elif choice == "8":
             run_script("06_start_bridge.sh")
         elif choice == "9":
+            run_script("09_link_ide.sh")
+        elif choice == "10":
             client_path = os.path.join(SCRIPT_DIR, "client.py")
             subprocess.call([sys.executable, client_path])
-        elif choice == "10" or choice.lower() in ["exit", "q"]:
+        elif choice == "11" or choice.lower() in ["exit", "q"]:
             print("Exiting wizard.")
             break
         else:
-            print("\033[31mInvalid option. Please choose 1-10.\033[0m")
+            print("\033[31mInvalid option. Please choose 1-11.\033[0m")
 
         input("\n\033[90mPress Enter to return to main menu...\033[0m")
         print("\n" * 2)

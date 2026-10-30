@@ -336,9 +336,10 @@ def run_curses_ui(stdscr):
                 ("6. Check / Update Models", "08_update_models.sh", "Check upstream model revisions & push updates via USB."),
                 ("7. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
                 ("8. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
-                ("9. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("10. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
-                ("11. Exit", "EXIT", "Quit p1xi3.")
+                ("9. Link IDEs & Coding Agents", "09_link_ide.sh", "Connect Zed, VS Code, Cursor, JetBrains & Neovim over USB."),
+                ("10. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("11. Switch Profile -> Stock Android", "TOGGLE_PROFILE", "Switch workflow for carrier-locked bootloaders."),
+                ("12. Exit", "EXIT", "Quit p1xi3.")
             ]
         else: # Stock Android
             items = [
@@ -349,9 +350,10 @@ def run_curses_ui(stdscr):
                 ("5. Check / Update Models", "08_update_models.sh", "Check upstream model revisions & push updates via USB."),
                 ("6. Switch / Load Active Model", "07_switch_model.sh", "Select and switch between installed models on device."),
                 ("7. Start USB Port Bridge", "06_start_bridge.sh", "Configure adb forward tcp:11435 tcp:11434."),
-                ("8. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
-                ("9. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
-                ("10. Exit", "EXIT", "Quit p1xi3.")
+                ("8. Link IDEs & Coding Agents", "09_link_ide.sh", "Connect Zed, VS Code, Cursor, JetBrains & Neovim over USB."),
+                ("9. Launch Host Chat Client", "client.py", "Open interactive USB streaming terminal chat session."),
+                ("10. Switch Profile -> GrapheneOS", "TOGGLE_PROFILE", "Switch workflow back to GrapheneOS installer."),
+                ("11. Exit", "EXIT", "Quit p1xi3.")
             ]
 
         if selected_idx >= len(items):
@@ -496,7 +498,12 @@ def run_curses_ui(stdscr):
             safe_addstr(stdscr, menu_start_y + 1, detail_x + 3, curr_label, curses.color_pair(1) | curses.A_BOLD)
             safe_addstr(stdscr, menu_start_y + 3, detail_x + 3, f"Description: {curr_desc[:detail_w - 18]}")
 
-            if "Update" in curr_label:
+            if "IDE" in curr_label or "Link" in curr_label:
+                safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "IDE & Coding Agent Integration:", curses.A_BOLD)
+                safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Auto-detects Zed, VS Code, Cursor, Windsurf, JetBrains & Neovim.")
+                safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Injects OpenAI-compatible USB bridge (http://127.0.0.1:11435/v1).")
+                safe_addstr(stdscr, menu_start_y + 8, detail_x + 3, "• Enables inline code generation, agent panels, & autocomplete.")
+            elif "Update" in curr_label:
                 safe_addstr(stdscr, menu_start_y + 5, detail_x + 3, "Air-Gapped Update Security:", curses.A_BOLD)
                 safe_addstr(stdscr, menu_start_y + 6, detail_x + 3, "• Air-gap strictly maintained: Pixel remains completely offline.")
                 safe_addstr(stdscr, menu_start_y + 7, detail_x + 3, "• Host checks HF repository commits on your explicit command.")

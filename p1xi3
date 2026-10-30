@@ -40,6 +40,7 @@ HELP_TEXT = f"""{CYAN}p1xi3 (._.) - Pixel 7 Air-Gapped USB LLM Toolkit (v{VERSIO
   {GREEN}p1xi3 switch{NC}          Interactive hot-switcher for installed models on device
   {GREEN}p1xi3 models{NC}          Browse, download, and push GGUF models to device
   {GREEN}p1xi3 update{NC}          Check upstream model updates & push to airgapped device
+  {GREEN}p1xi3 ide{NC}             Link phone LLM to detected IDEs (Zed, VS Code, JetBrains, etc.)
   {GREEN}p1xi3 provision{NC}       Provision Termux and native 16KB-aligned llama-server
   {GREEN}p1xi3 harden{NC}          Run air-gap security hardening checklist (use {DIM}--stock{NC} for stock Android)
   {GREEN}p1xi3 flash{NC}           View GrapheneOS flashing guide (panther)
@@ -198,6 +199,8 @@ def main():
         sys.exit(run_script("05_push_model.sh", sys.argv[2:]))
     elif subcmd in ["update", "check-update", "check-updates", "upgrade"]:
         sys.exit(run_script("08_update_models.sh", sys.argv[2:]))
+    elif subcmd in ["ide", "link-ide", "ides", "agent"]:
+        sys.exit(run_script("09_link_ide.sh", sys.argv[2:]))
     elif subcmd in ["bridge", "forward"]:
         sys.exit(run_script("06_start_bridge.sh", sys.argv[2:]))
     elif subcmd in ["switch", "swap"]:
