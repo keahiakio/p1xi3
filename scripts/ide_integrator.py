@@ -8,6 +8,8 @@ and configures them to use the air-gapped Pixel 7 LLM over physical USB.
 import os
 import sys
 import json
+import re
+import time
 import shutil
 import urllib.request
 import urllib.error
@@ -108,7 +110,7 @@ def detect_ides():
 
     # Binary and directory existence checks
     binaries = {
-        "zed": ["zed", "zed-editor"],
+        "zed": ["zed", "zed-editor", "/usr/lib/zed/zed-editor"],
         "vscode": ["code", "codium"],
         "cursor": ["cursor"],
         "windsurf": ["windsurf"],
@@ -125,7 +127,7 @@ def detect_ides():
         # Check binaries in PATH
         if key in binaries:
             for b in binaries[key]:
-                if shutil.which(b):
+                if shutil.which(b) or os.path.isfile(b):
                     info["detected"] = True
                     break
 
@@ -135,29 +137,44 @@ def detect_ides():
 
     return detect_map
 
+def strip_jsonc(text):
+    """Strips comments (// and /* */) and trailing commas while respecting strings."""
+    # Step 1: Remove comments while preserving string literals
+    comment_re = re.compile(
+        r'(\"(?:\\.|[^"\\])*\")|'   # String literal
+        r'(/\*[\s\S]*?\*/)|'       # Multi-line comment
+        r'(//[^\r\n]*)'            # Single-line comment
+    )
+    no_comments = comment_re.sub(lambda m: m.group(1) if m.group(1) else "", text)
+
+    # Step 2: Remove trailing commas before } or ] while preserving string literals
+    comma_re = re.compile(
+        r'(\"(?:\\.|[^"\\])*\")|'   # String literal
+        r'(,\s*(?=[}\]]))'         # Trailing comma outside string
+    )
+    return comma_re.sub(lambda m: m.group(1) if m.group(1) else "", no_comments)
+
 def load_json_relaxed(filepath):
-    """Loads JSON file, ignoring comments or formatting issues if possible."""
+    """Loads JSON/JSONC file, handling comments and trailing commas gracefully."""
     if not os.path.exists(filepath):
         return {}
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            lines = []
-            for line in f:
-                stripped = line.strip()
-                # Basic strip of whole line single-line comments //
-                if stripped.startswith("//"):
-                    continue
-                lines.append(line)
-            return json.loads("".join(lines))
-    except Exception:
+            content = f.read()
+        cleaned = strip_jsonc(content)
+        return json.loads(cleaned)
+    except Exception as e:
+        print(f"  {YELLOW}[!] Warning: Could not parse {filepath} as JSON ({e}). Preserving empty base.{NC}")
         return {}
 
 def backup_file(path):
     if os.path.exists(path):
         bak = f"{path}.p1xi3.bak"
+        # Protect original backup so subsequent runs never overwrite clean state
+        target_bak = bak if not os.path.exists(bak) else f"{path}.p1xi3.{int(time.time())}.bak"
         try:
-            shutil.copy2(path, bak)
-            print(f"  {DIM}↳ Created backup:{NC} {bak}")
+            shutil.copy2(path, target_bak)
+            print(f"  {DIM}↳ Created backup:{NC} {target_bak}")
         except Exception:
             pass
 
@@ -174,42 +191,50 @@ def configure_zed(info):
         {
             "name": "qwen2.5-coder-1.5b-instruct-q4_k_m",
             "display_name": "p1xi3 Qwen 2.5 Coder 1.5B (Fast USB Agent)",
-            "max_tokens": 4096,
-            "supports_tools": True
+            "max_tokens": 4096
         },
         {
             "name": "qwen2.5-coder-3b-instruct-q4_k_m",
             "display_name": "p1xi3 Qwen 2.5 Coder 3B (Architecture/Refactor)",
-            "max_tokens": 4096,
-            "supports_tools": True
+            "max_tokens": 4096
         },
         {
             "name": "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M",
             "display_name": "p1xi3 DeepSeek R1 Distill 1.5B (CoT Reasoning)",
-            "max_tokens": 4096,
-            "supports_tools": False
+            "max_tokens": 4096
         },
         {
             "name": "Llama-3.2-1B-Instruct-Q4_K_M",
             "display_name": "p1xi3 Llama 3.2 1B (Low Battery / Rapid Chat)",
-            "max_tokens": 4096,
-            "supports_tools": False
+            "max_tokens": 4096
         }
     ]
 
-    if "language_models" not in current_cfg:
+    if "language_models" not in current_cfg or not isinstance(current_cfg["language_models"], dict):
         current_cfg["language_models"] = {}
 
-    current_cfg["language_models"]["openai_compatible"] = {
+    if "openai_compatible" not in current_cfg["language_models"] or not isinstance(current_cfg["language_models"]["openai_compatible"], dict):
+        current_cfg["language_models"]["openai_compatible"] = {}
+
+    # Zed requires custom OpenAI-compatible providers to be nested under a provider identifier
+    current_cfg["language_models"]["openai_compatible"]["p1xi3"] = {
         "api_url": API_BASE,
         "available_models": p1xi3_models
     }
 
-    # Set assistant defaults
+    # Set agent defaults (Zed 1.20+ Agent Panel)
+    if "agent" not in current_cfg or not isinstance(current_cfg["agent"], dict):
+        current_cfg["agent"] = {}
+    current_cfg["agent"]["default_model"] = {
+        "provider": "p1xi3",
+        "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
+    }
+
+    # Set assistant & inline_assist defaults (Zed Assistant Panel & Inline Assist)
     current_cfg["assistant"] = {
         "version": "2",
         "default_model": {
-            "provider": "openai_compatible",
+            "provider": "p1xi3",
             "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
         }
     }
@@ -217,7 +242,7 @@ def configure_zed(info):
     current_cfg["inline_assist"] = {
         "version": "2",
         "default_model": {
-            "provider": "openai_compatible",
+            "provider": "p1xi3",
             "model": "qwen2.5-coder-1.5b-instruct-q4_k_m"
         }
     }
@@ -226,7 +251,8 @@ def configure_zed(info):
         json.dump(current_cfg, f, indent=2)
 
     print(f"  {GREEN}(^_^) [ok] Configured Zed settings:{NC} {cfg_file}")
-    print(f"       • Assistant Panel model set to p1xi3 Qwen 2.5 Coder")
+    print(f"       • OpenAI-compatible provider 'p1xi3' registered at {API_BASE}")
+    print(f"       • Agent & Assistant Panel default set to p1xi3 Qwen 2.5 Coder")
     print(f"       • Inline Assist (Ctrl+Enter) linked to Pixel 7 USB")
 
 def configure_continue(info):
