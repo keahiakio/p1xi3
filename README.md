@@ -255,6 +255,14 @@ This automatically detects and configures:
 
 ---
 
+## Contributing & Community
+
+Contributions, hardware benchmarks, and IDE adapter additions are welcome! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, security principles, and pull request procedures. All participants are expected to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+For vulnerability and air-gap integrity reporting, please review our [Security Policy](SECURITY.md).
+
+---
+
 ## License & Compliance
 
 - **Project License**: Licensed under the [MIT License](LICENSE).
